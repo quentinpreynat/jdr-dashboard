@@ -103,4 +103,4 @@ Utiliser **Réinitialiser les données de démo** dans l'en-tête (ou dans Param
 ## Sauvegarde (export / import)
 
 - **Exporter les données** : télécharge un fichier JSON de sauvegarde.
-- **Importer une sauvegarde** : sélectionne un fichier JSON et remplace les données actuelles.
+- **Importer une sauvegarde** : sélectionne un fichier JSON et remplace les données actuelles
