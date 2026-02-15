@@ -92,7 +92,8 @@ Le routing utilise `HashRouter` pour eviter les erreurs 404 au rafraichissement 
 
 Défini dans `src/models.ts` :
 
-- `Campaign { id, title, summary, tone, timelineItems: { id, text, order }[], createdAt, updatedAt }`
+- `Campaign { id, title, summary, tone, createdAt, updatedAt }`
+- Chronologie: derivee des `Session` marquees `inTimeline`, ordonnees via `timelineOrder`.
 - `Session { id, title, objective, notes, scenes: { id, title, text, order, linkedNpcIds: string[] }[], inTimeline: boolean, timelineOrder: number, createdAt, updatedAt }`
 - `Npc { id, name, role, locationText, description, notes, attitude: "friendly" | "neutral" | "wary" | "hostile", createdAt, updatedAt }`
 
@@ -104,3 +105,4 @@ Utiliser **Réinitialiser les données de démo** dans l'en-tête (ou dans Param
 
 - **Exporter les données** : télécharge un fichier JSON de sauvegarde.
 - **Importer une sauvegarde** : sélectionne un fichier JSON et remplace les données actuelles
+

@@ -1,14 +1,31 @@
-import { useRef, useState, type ChangeEvent } from "react";
+﻿import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useAppData } from "../state/AppDataContext";
 
 export function SettingsPage() {
   const { data, resetDemoData, replaceData } = useAppData();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [isDimMode, setIsDimMode] = useState<boolean>(false);
+
+  useEffect(() => {
+    try {
+      setIsDimMode(localStorage.getItem("tor-live-dim-enabled") === "true");
+    } catch {
+      setIsDimMode(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("tor-live-dim-enabled", String(isDimMode));
+    } catch {
+      // Ignore storage failures (private mode, quota).
+    }
+  }, [isDimMode]);
 
   const onExport = () => {
     const payload = JSON.stringify(data, null, 2);
-    const blob = new Blob([payload], { type: "application/json" });
+    const blob = new Blob([payload], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -83,6 +100,22 @@ export function SettingsPage() {
       </div>
 
       <div className="rounded-md border border-amber-900/20 p-4">
+        <h3 className="text-lg font-semibold">Affichage</h3>
+        <p className="mb-3 mt-1 text-sm text-amber-950/80">
+          Réduit l’éblouissement sur iPad pendant la partie.
+        </p>
+        <label className="flex min-h-11 items-center gap-3 rounded-md border border-amber-900/20 bg-amber-50/60 px-3 py-2 text-sm">
+          <input
+            type="checkbox"
+            checked={isDimMode}
+            onChange={(event) => setIsDimMode(event.target.checked)}
+            className="h-5 w-5 accent-amber-900"
+          />
+          <span className="font-medium">Mode tamisé (Session Live)</span>
+        </label>
+      </div>
+
+      <div className="rounded-md border border-amber-900/20 p-4">
         <h3 className="text-lg font-semibold">Gestion des données</h3>
         <p className="mb-3 mt-1 text-sm text-amber-950/80">
           Réinitialiser toutes les données de campagne, de session et de PNJ aux valeurs de démo.
@@ -105,3 +138,4 @@ export function SettingsPage() {
     </section>
   );
 }
+

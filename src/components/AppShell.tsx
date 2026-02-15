@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAppData } from "../state/AppDataContext";
 
@@ -10,6 +10,8 @@ const navLinkClass = ({ isActive }: { isActive: boolean }): string =>
 export function AppShell() {
   const { resetDemoData, lastSavedAt } = useAppData();
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const location = useLocation();
+  const isLiveMode = location.pathname.startsWith("/session/") && location.pathname.endsWith("/live");
 
   const savedLabel = lastSavedAt
     ? `Enregistré · ${new Date(lastSavedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`
@@ -32,6 +34,16 @@ export function AppShell() {
       resetDemoData();
     }
   };
+
+  if (isLiveMode) {
+    return (
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top,#efe4cf_0%,#e6dcc7_45%,#d8cbb5_100%)] text-ink">
+        <main className="min-h-screen px-4 py-5">
+          <Outlet />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#fef9e9_0%,#f1ece0_45%,#e8e1d2_100%)] text-ink">
@@ -65,6 +77,9 @@ export function AppShell() {
           <NavLink to="/npcs" className={navLinkClass}>
             PNJ
           </NavLink>
+          <NavLink to="/search" className={navLinkClass}>
+            Recherche
+          </NavLink>
           <NavLink to="/settings" className={navLinkClass}>
             Paramètres
           </NavLink>
@@ -82,6 +97,9 @@ export function AppShell() {
             </NavLink>
             <NavLink to="/npcs" className={navLinkClass}>
               PNJ
+            </NavLink>
+            <NavLink to="/search" className={navLinkClass}>
+              Recherche
             </NavLink>
             <NavLink to="/settings" className={navLinkClass}>
               Paramètres

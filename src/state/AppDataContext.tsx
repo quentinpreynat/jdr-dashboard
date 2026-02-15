@@ -7,17 +7,15 @@ import type { AppData, Campaign, Npc, Scene, Session } from "../models";
 interface AppDataContextValue {
   data: AppData;
   lastSavedAt: string | null;
-  updateCampaign(fields: Partial<Omit<Campaign, "id" | "timelineItems">>): void;
-  addTimelineItem(text: string): void;
-  updateTimelineItem(itemId: string, text: string): void;
-  removeTimelineItem(itemId: string): void;
-  moveTimelineItem(itemId: string, direction: "up" | "down"): void;
+  updateCampaign(fields: Partial<Omit<Campaign, "id">>): void;
   moveSessionTimeline(sessionId: string, direction: "up" | "down"): void;
   createSession(): string;
   deleteSession(sessionId: string): void;
   updateSession(sessionId: string, fields: Partial<Omit<Session, "id" | "scenes">>): void;
   addScene(sessionId: string): void;
   updateScene(sessionId: string, sceneId: string, fields: Partial<Omit<Scene, "id" | "order">>): void;
+  addSceneLiveNote(sessionId: string, targetSceneId: string, text: string, createdFromSceneId?: string): void;
+  removeSceneLiveNote(sessionId: string, sceneId: string, noteId: string): void;
   deleteScene(sessionId: string, sceneId: string): void;
   moveScene(sessionId: string, sceneId: string, direction: "up" | "down"): void;
   setSceneNpcLink(sessionId: string, sceneId: string, npcId: string, linked: boolean): void;
@@ -44,6 +42,10 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+function nowMs(): number {
+  return Date.now();
+}
+
 function ensureTimestamp(value: string | undefined, fallback: string): string {
   return value ?? fallback;
 }
@@ -63,7 +65,12 @@ function ensureSessionTimestamps(session: Session): Session {
     ...session,
     scenes: session.scenes.map((scene) => ({
       ...scene,
-      linkedNpcIds: scene.linkedNpcIds ?? []
+      linkedNpcIds: scene.linkedNpcIds ?? [],
+      done: scene.done ?? false,
+      liveNotes: (scene.liveNotes ?? []).map((note) => ({
+        ...note,
+        createdAt: typeof note.createdAt === "number" ? note.createdAt : Date.parse(String(note.createdAt))
+      }))
     })),
     inTimeline: session.inTimeline ?? true,
     timelineOrder: session.timelineOrder ?? 0,
@@ -83,9 +90,12 @@ function ensureNpcTimestamps(npc: Npc): Npc {
 }
 
 function ensureAppData(data: AppData): AppData {
+  const { timelineItems: _legacyTimelineItems, ...campaign } = data.campaign as Campaign & {
+    timelineItems?: unknown;
+  };
   const normalized = {
     ...data,
-    campaign: ensureCampaignTimestamps(data.campaign),
+    campaign: ensureCampaignTimestamps(campaign),
     sessions: data.sessions.map(ensureSessionTimestamps),
     npcs: data.npcs.map(ensureNpcTimestamps)
   };
@@ -107,16 +117,32 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === "string");
 }
 
-function isScene(value: unknown): value is Scene {
+function isLiveNote(value: unknown): value is { id: string; text: string; createdAt: number; createdFromSceneId?: string } {
   if (!isRecord(value)) {
     return false;
   }
   return (
     typeof value.id === "string" &&
+    typeof value.text === "string" &&
+    typeof value.createdAt === "number" &&
+    (value.createdFromSceneId === undefined || typeof value.createdFromSceneId === "string")
+  );
+}
+
+function isScene(value: unknown): value is Scene {
+  if (!isRecord(value)) {
+    return false;
+  }
+  const linkedNpcIds = value.linkedNpcIds;
+  const liveNotes = value.liveNotes;
+  return (
+    typeof value.id === "string" &&
     typeof value.title === "string" &&
     typeof value.text === "string" &&
     typeof value.order === "number" &&
-    isStringArray(value.linkedNpcIds)
+    (linkedNpcIds === undefined || isStringArray(linkedNpcIds)) &&
+    (value.done === undefined || typeof value.done === "boolean") &&
+    (liveNotes === undefined || (Array.isArray(liveNotes) && liveNotes.every(isLiveNote)))
   );
 }
 
@@ -166,8 +192,7 @@ function isCampaign(value: unknown): value is Campaign {
     typeof value.id === "string" &&
     typeof value.title === "string" &&
     typeof value.summary === "string" &&
-    typeof value.tone === "string" &&
-    Array.isArray(value.timelineItems)
+    typeof value.tone === "string"
   );
 }
 
@@ -231,65 +256,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setData((prev) => ({
           ...prev,
           campaign: { ...prev.campaign, ...fields, updatedAt: timestamp }
-        }));
-      },
-      addTimelineItem(text) {
-        const trimmedText = text.trim();
-        if (!trimmedText) {
-          return;
-        }
-
-        const timestamp = nowIso();
-        setData((prev) => {
-          const nextOrder = prev.campaign.timelineItems.length + 1;
-          return {
-            ...prev,
-            campaign: {
-              ...prev.campaign,
-              timelineItems: [
-                ...prev.campaign.timelineItems,
-                { id: createId("timeline"), text: trimmedText, order: nextOrder }
-              ],
-              updatedAt: timestamp
-            }
-          };
-        });
-      },
-      updateTimelineItem(itemId, text) {
-        const timestamp = nowIso();
-        setData((prev) => ({
-          ...prev,
-          campaign: {
-            ...prev.campaign,
-            timelineItems: prev.campaign.timelineItems.map((item) =>
-              item.id === itemId ? { ...item, text } : item
-            ),
-            updatedAt: timestamp
-          }
-        }));
-      },
-      removeTimelineItem(itemId) {
-        const timestamp = nowIso();
-        setData((prev) => ({
-          ...prev,
-          campaign: {
-            ...prev.campaign,
-            timelineItems: moveToSequentialOrder(
-              prev.campaign.timelineItems.filter((item) => item.id !== itemId)
-            ),
-            updatedAt: timestamp
-          }
-        }));
-      },
-      moveTimelineItem(itemId, direction) {
-        const timestamp = nowIso();
-        setData((prev) => ({
-          ...prev,
-          campaign: {
-            ...prev.campaign,
-            timelineItems: swapOrderedItem(prev.campaign.timelineItems, itemId, direction),
-            updatedAt: timestamp
-          }
         }));
       },
       createSession() {
@@ -370,6 +336,69 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               scenes: session.scenes.map((scene) =>
                 scene.id === sceneId ? { ...scene, ...fields } : scene
               ),
+              updatedAt: timestamp
+            };
+          })
+        }));
+      },
+      addSceneLiveNote(sessionId, targetSceneId, text, createdFromSceneId) {
+        const trimmedText = text.trim();
+        if (!trimmedText) {
+          return;
+        }
+        const timestamp = nowIso();
+        const timestampMs = nowMs();
+        setData((prev) => ({
+          ...prev,
+          sessions: prev.sessions.map((session) => {
+            if (session.id !== sessionId) {
+              return session;
+            }
+
+            return {
+              ...session,
+              scenes: session.scenes.map((scene) => {
+                if (scene.id !== targetSceneId) {
+                  return scene;
+                }
+
+                const nextNotes = [
+                  ...(scene.liveNotes ?? []),
+                  {
+                    id: createId("note"),
+                    text: trimmedText,
+                    createdAt: timestampMs,
+                    createdFromSceneId
+                  }
+                ];
+                return { ...scene, liveNotes: nextNotes };
+              }),
+              updatedAt: timestamp
+            };
+          })
+        }));
+      },
+      removeSceneLiveNote(sessionId, sceneId, noteId) {
+        const timestamp = nowIso();
+        setData((prev) => ({
+          ...prev,
+          sessions: prev.sessions.map((session) => {
+            if (session.id !== sessionId) {
+              return session;
+            }
+
+            return {
+              ...session,
+              scenes: session.scenes.map((scene) => {
+                if (scene.id !== sceneId) {
+                  return scene;
+                }
+
+                return {
+                  ...scene,
+                  liveNotes: (scene.liveNotes ?? []).filter((note) => note.id !== noteId)
+                };
+              }),
               updatedAt: timestamp
             };
           })
@@ -546,3 +575,5 @@ export function useAppData(): AppDataContextValue {
   }
   return context;
 }
+
+

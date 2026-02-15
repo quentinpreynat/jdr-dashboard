@@ -1,4 +1,4 @@
-import type { AppData } from "../models";
+﻿import type { AppData } from "../models";
 
 export const DEMO_DATA: AppData = {
   campaign: {
@@ -7,18 +7,6 @@ export const DEMO_DATA: AppData = {
     summary:
       "Un trouble grandissant autour de la Grande Route de l'Est-Ouest, où les marchands disparaissent et où d'anciennes rumeurs ressurgissent.",
     tone: "Voyage méfiant, vieilles chansons, sourde inquiétude.",
-    timelineItems: [
-      {
-        id: "timeline_1",
-        text: "Une caravane marchande disparaît près des Collines du Temps.",
-        order: 1
-      },
-      {
-        id: "timeline_2",
-        text: "Les rôdeurs signalent d'étranges feux aperçus depuis une tour de guet en ruine.",
-        order: 2
-      }
-    ],
     createdAt: "2026-02-01T10:00:00.000Z",
     updatedAt: "2026-02-10T18:30:00.000Z"
   },
@@ -116,3 +104,7 @@ export const DEMO_DATA: AppData = {
 export function cloneDemoData(): AppData {
   return JSON.parse(JSON.stringify(DEMO_DATA)) as AppData;
 }
+
+
+
+

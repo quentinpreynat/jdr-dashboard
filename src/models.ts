@@ -1,17 +1,17 @@
-export interface TimelineItem {
-  id: string;
-  text: string;
-  order: number;
-}
-
 export interface Campaign {
   id: string;
   title: string;
   summary: string;
   tone: string;
-  timelineItems: TimelineItem[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface LiveNote {
+  id: string;
+  text: string;
+  createdAt: number;
+  createdFromSceneId?: string;
 }
 
 export interface Scene {
@@ -20,6 +20,8 @@ export interface Scene {
   text: string;
   order: number;
   linkedNpcIds: string[];
+  done?: boolean;
+  liveNotes?: LiveNote[];
 }
 
 export interface Session {
@@ -27,6 +29,7 @@ export interface Session {
   title: string;
   objective: string;
   notes: string;
+  openingText?: string;
   scenes: Scene[];
   inTimeline: boolean;
   timelineOrder: number;

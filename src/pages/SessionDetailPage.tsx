@@ -1,12 +1,31 @@
-import { Link, useParams } from "react-router-dom";
+﻿import { Link, useLocation, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useAppData } from "../state/AppDataContext";
 
 export function SessionDetailPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const location = useLocation();
   const { data, updateSession, addScene, updateScene, deleteScene, moveScene, setSceneNpcLink } =
     useAppData();
   const session = data.sessions.find((entry) => entry.id === sessionId);
+  const [highlightSceneId, setHighlightSceneId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!session || !sessionId) {
+      return;
+    }
+    const params = new URLSearchParams(location.search);
+    const sceneId = params.get("scene");
+    if (!sceneId) {
+      return;
+    }
+    setHighlightSceneId(sceneId);
+    const target = document.getElementById(`scene-${sceneId}`);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => setHighlightSceneId(null), 1500);
+    }
+  }, [location.search, session, sessionId]);
   if (!session || !sessionId) {
     return (
       <section className="space-y-3">
@@ -17,18 +36,25 @@ export function SessionDetailPage() {
       </section>
     );
   }
-
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-2xl font-semibold">Détails de la session</h2>
-        <button
-          type="button"
-          onClick={() => addScene(sessionId)}
-          className="min-h-11 rounded-md bg-moss px-3 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          Ajouter une scène
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to={`/session/${sessionId}/live`}
+            className="min-h-11 rounded-md border border-amber-900/30 px-3 py-2 text-sm text-amber-900 hover:bg-amber-100"
+          >
+            Open Session Live
+          </Link>
+          <button
+            type="button"
+            onClick={() => addScene(sessionId)}
+            className="min-h-11 rounded-md bg-moss px-3 py-2 text-sm font-medium text-white hover:opacity-90"
+          >
+            Ajouter une scène
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -37,7 +63,7 @@ export function SessionDetailPage() {
           <input
             value={session.title}
             onChange={(event) => updateSession(sessionId, { title: event.target.value })}
-            className="rounded-md border border-amber-900/20 px-3 py-2"
+            className="parchment-text rounded-md border border-amber-900/20 px-3 py-2"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -45,7 +71,7 @@ export function SessionDetailPage() {
           <input
             value={session.objective}
             onChange={(event) => updateSession(sessionId, { objective: event.target.value })}
-            className="rounded-md border border-amber-900/20 px-3 py-2"
+            className="parchment-text rounded-md border border-amber-900/20 px-3 py-2"
           />
         </label>
       </div>
@@ -56,7 +82,7 @@ export function SessionDetailPage() {
           rows={5}
           value={session.notes}
           onChange={(event) => updateSession(sessionId, { notes: event.target.value })}
-          className="rounded-md border border-amber-900/20 px-3 py-2"
+          className="parchment-text rounded-md border border-amber-900/20 px-3 py-2"
         />
       </label>
 
@@ -66,7 +92,13 @@ export function SessionDetailPage() {
           {[...session.scenes]
             .sort((a, b) => a.order - b.order)
             .map((scene, index, orderedScenes) => (
-              <li key={scene.id} className="rounded-md border border-amber-900/20 p-3">
+              <li
+                id={`scene-${scene.id}`}
+                key={scene.id}
+                className={`rounded-md border border-amber-900/20 p-3 ${
+                  highlightSceneId === scene.id ? "ring-2 ring-amber-400/60" : ""
+                }`}
+              >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <span className="text-sm font-medium text-amber-950/70">Scène {scene.order}</span>
                   <div className="flex gap-2">
@@ -100,7 +132,7 @@ export function SessionDetailPage() {
                   <input
                     value={scene.title}
                     onChange={(event) => updateScene(sessionId, scene.id, { title: event.target.value })}
-                    className="rounded-md border border-amber-900/20 px-3 py-2"
+                    className="parchment-text rounded-md border border-amber-900/20 px-3 py-2"
                   />
                 </label>
                 <label className="flex flex-col gap-1">
@@ -109,7 +141,7 @@ export function SessionDetailPage() {
                     rows={4}
                     value={scene.text}
                     onChange={(event) => updateScene(sessionId, scene.id, { text: event.target.value })}
-                    className="rounded-md border border-amber-900/20 px-3 py-2"
+                    className="parchment-text rounded-md border border-amber-900/20 px-3 py-2"
                   />
                 </label>
                 <div className="mt-3 rounded-md border border-amber-900/20 p-2">
@@ -152,3 +184,13 @@ export function SessionDetailPage() {
     </section>
   );
 }
+
+
+
+
+
+
+
+
+
+

@@ -3,9 +3,143 @@
 @tailwind utilities;
 
 :root {
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  --font-sans: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  --font-parchment: "Noto Serif", "Georgia", "Times New Roman", serif;
+  font-family: var(--font-sans);
   color: #25201b;
   background-color: #f1ece0;
+}
+
+.parchment-text {
+  font-family: var(--font-parchment);
+}
+
+.fade-in {
+  animation: fade-in 200ms ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.live-layout {
+  grid-template-columns: 30% 70%;
+  transition: grid-template-columns 220ms ease;
+}
+
+.live-layout .scene-list {
+  transition: opacity 220ms ease, transform 220ms ease, max-width 220ms ease;
+}
+
+.live-layout.is-focus {
+  grid-template-columns: 0% 100%;
+}
+
+.live-layout.is-focus .scene-list {
+  opacity: 0;
+  transform: translateX(-12px);
+  max-width: 0;
+  pointer-events: none;
+}
+
+.session-live {
+  transition: background-color 220ms ease, color 220ms ease;
+}
+
+.session-live.is-dim .scene-list {
+  background-color: rgba(170, 150, 120, 0.35);
+}
+
+.session-live.is-dim .scene-panel {
+  background-color: rgba(160, 145, 120, 0.28);
+}
+
+.session-live.is-dim .fade-in {
+  color: #2a231b;
+}
+
+.session-live.is-dim .parchment-text {
+  color: #2a231b;
+}
+
+.session-live.is-dim .bg-white\/70,
+.session-live.is-dim .bg-white\/90,
+.session-live.is-dim .bg-white\/80 {
+  background-color: rgba(247, 244, 236, 0.72);
+}
+
+.session-live .live-card {
+  transition: background-color 220ms ease, border-color 220ms ease, color 220ms ease;
+}
+
+.session-live.is-dim .live-card {
+  background-color: rgba(236, 228, 213, 0.85);
+}
+
+.flash-ring {
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.45);
+  transition: box-shadow 200ms ease;
+}
+
+.live-search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+}
+
+.live-search-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(25, 20, 14, 0.35);
+  backdrop-filter: blur(2px);
+}
+
+.live-search-panel {
+  position: relative;
+  z-index: 60;
+  width: min(720px, 92vw);
+  max-height: 82vh;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(120, 95, 60, 0.25);
+  background: rgba(250, 246, 236, 0.95);
+  padding: 20px;
+  box-shadow: 0 20px 40px rgba(34, 27, 18, 0.2);
+  animation: fade-in 180ms ease-out;
+}
+
+.live-search-panel.is-dim {
+  background: rgba(232, 224, 210, 0.95);
+}
+
+.live-quick-panel {
+  margin-top: 12px;
+  width: min(520px, 92vw);
+}
+
+.focus-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background-color: rgba(255, 255, 255, 0.55);
+  transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease;
+}
+
+.session-live.is-dim .focus-nav {
+  background-color: rgba(236, 228, 213, 0.6);
+  border-color: rgba(120, 95, 60, 0.25);
+  color: rgba(42, 35, 27, 0.7);
 }
 
 body {
