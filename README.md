@@ -22,6 +22,27 @@ Carnet MJ local-first pour **L'Anneau Unique / The One Ring**, conçu pour une p
    ```
 4. Ouvrir l'URL affichée par Vite (souvent `http://localhost:5173`).
 
+## Deploiement GitHub Pages
+
+Le deploiement est automatise via GitHub Actions sur chaque push sur `main`.
+
+1. Verifier que le repo est publie en Pages (Settings -> Pages -> Source = GitHub Actions).
+2. Le workflow construit `dist/` et deploie automatiquement.
+3. L'URL finale est `https://<user>.github.io/<repo>/`.
+
+### Configuration du `base` Vite (nom du repo)
+
+Le `base` est deduit de la variable d'environnement `GITHUB_REPO` dans `vite.config.ts`.
+
+- En CI, le workflow fournit automatiquement `GITHUB_REPO: ${{ github.event.repository.name }}`.
+- En local, si vous voulez tester un build avec le meme chemin que GitHub Pages :
+  ```bash
+  $env:GITHUB_REPO="nom-du-repo"
+  npm run build
+  ```
+
+Si vous preferez un `base` fixe, modifiez la variable `repoName` dans `vite.config.ts`.
+
 ## Installation sur iPad (PWA)
 
 1. Ouvrir l'application dans Safari.
@@ -29,11 +50,17 @@ Carnet MJ local-first pour **L'Anneau Unique / The One Ring**, conçu pour une p
 3. Choisir **Ajouter à l'écran d'accueil**.
 4. Lancer l'app depuis l'icône : elle s'ouvre en plein écran.
 
+## Routing (HashRouter)
+
+Le routing utilise `HashRouter` pour eviter les erreurs 404 au rafraichissement sur GitHub Pages.
+
+- Les URLs ressemblent a `https://<user>.github.io/<repo>/#/sessions`.
+
 ## Hors ligne
 
 - Après une première visite en ligne, l'app peut s'ouvrir hors connexion.
 - Les données restent stockées localement dans le navigateur.
-- Limitations : la première ouverture nécessite une connexion pour mettre en cache les fichiers.
+- Limitations : la première ouverture nécessite une connexion pour mettre en cache les fichiers. Seul le shell de l'app est garanti hors ligne.
 
 ## Fonctionnalités Jalon 1
 
