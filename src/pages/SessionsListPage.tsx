@@ -33,7 +33,7 @@ export function SessionsListPage() {
             const sessionId = createSession();
             navigate(`/sessions/${sessionId}`);
           }}
-          className="min-h-11 rounded-md bg-moss px-3 py-2 font-medium text-white hover:opacity-90"
+          className="btn btn-primary"
         >
           Nouvelle session
         </button>
@@ -41,7 +41,7 @@ export function SessionsListPage() {
 
       <ul className="space-y-3">
         {data.sessions.map((session) => (
-          <li key={session.id} className="rounded-md border border-amber-900/20 p-3">
+          <li key={session.id} className="card card-compact">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold">{session.title || "Session sans titre"}</h3>
@@ -54,10 +54,7 @@ export function SessionsListPage() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Link
-                  to={`/sessions/${session.id}`}
-                  className="min-h-11 rounded-md border border-amber-900/30 px-3 py-2 text-sm hover:bg-amber-100"
-                >
+                <Link to={`/sessions/${session.id}`} className="btn btn-subtle">
                   Ouvrir
                 </Link>
                 <button
@@ -68,7 +65,7 @@ export function SessionsListPage() {
                       deleteSession(session.id);
                     }
                   }}
-                  className="min-h-11 rounded-md border border-red-900/20 px-3 py-2 text-sm text-red-900 hover:bg-red-50"
+                  className="btn btn-danger"
                 >
                   Supprimer
                 </button>
@@ -77,7 +74,7 @@ export function SessionsListPage() {
           </li>
         ))}
         {data.sessions.length === 0 && (
-          <li className="rounded-md border border-dashed border-amber-900/20 p-4 text-sm text-amber-950/70">
+          <li className="card card-dashed card-compact text-sm text-amber-950/70">
             Aucune session pour le moment.
           </li>
         )}

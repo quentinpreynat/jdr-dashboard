@@ -37,8 +37,8 @@ export function AppShell() {
 
   if (isLiveMode) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top,#efe4cf_0%,#e6dcc7_45%,#d8cbb5_100%)] text-ink">
-        <main className="min-h-screen px-4 py-5">
+      <div className="min-h-screen w-full text-ink">
+        <main className="min-h-screen w-full overflow-x-hidden p-0">
           <Outlet />
         </main>
       </div>
@@ -54,15 +54,13 @@ export function AppShell() {
             <p className="text-xs text-amber-950/80">Application web locale - jalon 1</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-amber-900/70">
-            {!isOnline && (
-              <span className="rounded-full bg-red-100 px-2 py-1 text-red-900">Hors ligne</span>
-            )}
+            {!isOnline && <span className="badge badge-hostile px-2 py-1">Hors ligne</span>}
             <span>{savedLabel}</span>
           </div>
           <button
             type="button"
             onClick={onReset}
-            className="min-h-11 rounded-md border border-amber-900/30 bg-amber-100 px-3 py-2 text-sm font-medium hover:bg-amber-200"
+            className="btn btn-subtle"
           >
             Réinitialiser les données de démo
           </button>
@@ -87,7 +85,7 @@ export function AppShell() {
       </header>
 
       <div className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-4 lg:grid-cols-[220px_1fr]">
-        <aside className="hidden rounded-lg border border-amber-900/15 bg-parchment p-3 shadow-sm lg:block">
+        <aside className="card card-solid hidden rounded-lg p-3 shadow-sm lg:block">
           <nav className="flex gap-2 md:flex-col">
             <NavLink to="/" end className={navLinkClass}>
               Campagne
@@ -107,7 +105,7 @@ export function AppShell() {
           </nav>
         </aside>
 
-        <main className="rounded-lg border border-amber-900/15 bg-parchment p-4 shadow-sm">
+        <main className="card card-solid rounded-lg p-4 shadow-sm">
           <Outlet />
         </main>
       </div>

@@ -50,12 +50,12 @@ export function CampaignDashboardPage() {
         />
       </label>
 
-      <div className="space-y-3 rounded-md border border-amber-900/20 p-3">
+      <div className="card card-compact space-y-3">
         <h3 className="text-lg font-semibold">Chronologie</h3>
 
         <ul className="space-y-2">
           {orderedItems.map((session, index) => (
-            <li key={session.id} className="flex items-center gap-2 rounded-md border border-amber-900/20 p-2">
+            <li key={session.id} className="card card-compact flex items-center gap-2">
               <span className="w-8 text-center text-sm text-amber-950/70">{session.timelineOrder}</span>
               <div className="flex-1">
                 <p className="text-sm font-medium">{session.title || "Session sans titre"}</p>
@@ -68,7 +68,7 @@ export function CampaignDashboardPage() {
                   type="button"
                   onClick={() => moveSessionTimeline(session.id, "up")}
                   disabled={index === 0}
-                  className="min-h-11 rounded-md border border-amber-900/20 px-2 py-2 text-sm text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="btn btn-subtle px-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Monter
                 </button>
@@ -76,7 +76,7 @@ export function CampaignDashboardPage() {
                   type="button"
                   onClick={() => moveSessionTimeline(session.id, "down")}
                   disabled={index === orderedItems.length - 1}
-                  className="min-h-11 rounded-md border border-amber-900/20 px-2 py-2 text-sm text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="btn btn-subtle px-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Descendre
                 </button>
@@ -84,7 +84,7 @@ export function CampaignDashboardPage() {
             </li>
           ))}
           {orderedItems.length === 0 && (
-            <li className="rounded-md border border-dashed border-amber-900/20 p-3 text-sm text-amber-950/70">
+            <li className="card card-dashed card-compact text-sm text-amber-950/70">
               Aucune session dans la chronologie pour le moment.
             </li>
           )}

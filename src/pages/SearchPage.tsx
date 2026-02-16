@@ -123,7 +123,7 @@ export function SearchPage() {
         <p className="text-sm text-amber-950/70">PNJ, sessions et scènes.</p>
       </div>
 
-      <div className="rounded-md border border-amber-900/20 bg-amber-50/60 p-4">
+      <div className="card card-muted">
         <label className="flex flex-col gap-2">
           <span className="text-sm font-medium">Rechercher</span>
           <input
@@ -149,7 +149,7 @@ export function SearchPage() {
           <h3 className="text-lg font-semibold">PNJ</h3>
           <ul className="space-y-2">
             {grouped.npc.map((result) => (
-              <li key={result.id} className="rounded-md border border-amber-900/20 bg-white/70 p-3">
+              <li key={result.id} className="card card-compact">
                 <Link to={result.href} className="block">
                   <p className="font-medium">{result.title}</p>
                   {result.subtitle && <p className="text-xs text-amber-900/70">{result.subtitle}</p>}
@@ -166,7 +166,7 @@ export function SearchPage() {
           <h3 className="text-lg font-semibold">Sessions</h3>
           <ul className="space-y-2">
             {grouped.session.map((result) => (
-              <li key={result.id} className="rounded-md border border-amber-900/20 bg-white/70 p-3">
+              <li key={result.id} className="card card-compact">
                 <Link to={result.href} className="block">
                   <p className="font-medium">{result.title}</p>
                   {result.subtitle && <p className="text-xs text-amber-900/70">{result.subtitle}</p>}
@@ -183,7 +183,7 @@ export function SearchPage() {
           <h3 className="text-lg font-semibold">Scènes</h3>
           <ul className="space-y-2">
             {grouped.scene.map((result) => (
-              <li key={result.id} className="rounded-md border border-amber-900/20 bg-white/70 p-3">
+              <li key={result.id} className="card card-compact">
                 <Link to={result.href} className="block">
                   <p className="font-medium">{result.title}</p>
                   {result.subtitle && <p className="text-xs text-amber-900/70">{result.subtitle}</p>}

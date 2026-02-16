@@ -15,10 +15,10 @@ export function NpcDetailPage() {
   };
 
   const attitudeClasses: Record<NpcAttitude, string> = {
-    friendly: "bg-green-100 text-green-900",
-    neutral: "bg-amber-100 text-amber-900",
-    wary: "bg-orange-100 text-orange-900",
-    hostile: "bg-red-100 text-red-900"
+    friendly: "badge badge-friendly",
+    neutral: "badge badge-neutral",
+    wary: "badge badge-wary",
+    hostile: "badge badge-hostile"
   };
 
   if (!npc || !npcId) {
@@ -42,7 +42,7 @@ export function NpcDetailPage() {
     <section className="space-y-4">
       <div className="flex items-center gap-2">
         <h2 className="text-2xl font-semibold">Détails du PNJ</h2>
-        <span className={`rounded-full px-2 py-1 text-xs font-medium ${attitudeClasses[npc.attitude]}`}>
+        <span className={`${attitudeClasses[npc.attitude]} px-2 py-1`}>
           {attitudeLabels[npc.attitude]}
         </span>
       </div>
@@ -109,7 +109,7 @@ export function NpcDetailPage() {
         />
       </label>
 
-      <div className="rounded-md border border-amber-900/20 p-3">
+      <div className="card card-compact">
         <h3 className="text-lg font-semibold">Apparitions</h3>
         <p className="text-sm text-amber-950/80">Lecture seule.</p>
         <div className="mt-3 space-y-2">

@@ -68,7 +68,7 @@ export function SettingsPage() {
         <p className="text-sm text-amber-950/80">Actions utilitaires pour ce MVP local.</p>
       </div>
 
-      <div className="rounded-md border border-amber-900/20 p-4">
+      <div className="card">
         <h3 className="text-lg font-semibold">Sauvegarde</h3>
         <p className="mb-3 mt-1 text-sm text-amber-950/80">
           Exportez vos données pour les conserver, puis importez-les pour restaurer une sauvegarde.
@@ -77,14 +77,14 @@ export function SettingsPage() {
           <button
             type="button"
             onClick={onExport}
-            className="min-h-11 rounded-md border border-amber-900/30 bg-amber-100 px-3 py-2 text-sm font-medium text-amber-900 hover:bg-amber-200"
+            className="btn btn-subtle"
           >
             Exporter les données
           </button>
           <button
             type="button"
             onClick={onImportClick}
-            className="min-h-11 rounded-md border border-amber-900/30 bg-parchment px-3 py-2 text-sm font-medium hover:bg-amber-100"
+            className="btn btn-subtle"
           >
             Importer une sauvegarde
           </button>
@@ -99,12 +99,12 @@ export function SettingsPage() {
         {importMessage && <p className="mt-2 text-sm text-amber-950/80">{importMessage}</p>}
       </div>
 
-      <div className="rounded-md border border-amber-900/20 p-4">
+      <div className="card">
         <h3 className="text-lg font-semibold">Affichage</h3>
         <p className="mb-3 mt-1 text-sm text-amber-950/80">
           Réduit l’éblouissement sur iPad pendant la partie.
         </p>
-        <label className="flex min-h-11 items-center gap-3 rounded-md border border-amber-900/20 bg-amber-50/60 px-3 py-2 text-sm">
+        <label className="card card-muted card-compact flex min-h-11 items-center gap-3 text-sm">
           <input
             type="checkbox"
             checked={isDimMode}
@@ -115,7 +115,7 @@ export function SettingsPage() {
         </label>
       </div>
 
-      <div className="rounded-md border border-amber-900/20 p-4">
+      <div className="card">
         <h3 className="text-lg font-semibold">Gestion des données</h3>
         <p className="mb-3 mt-1 text-sm text-amber-950/80">
           Réinitialiser toutes les données de campagne, de session et de PNJ aux valeurs de démo.
@@ -130,7 +130,7 @@ export function SettingsPage() {
               resetDemoData();
             }
           }}
-          className="min-h-11 rounded-md border border-red-900/20 bg-red-50 px-3 py-2 text-sm font-medium text-red-900 hover:bg-red-100"
+          className="btn btn-danger"
         >
           Réinitialiser les données de démo
         </button>

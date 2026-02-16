@@ -3,10 +3,10 @@ import { Link, useParams } from "react-router-dom";
 import { useAppData } from "../state/AppDataContext";
 
 const attitudeStyles: Record<string, string> = {
-  friendly: "border-emerald-700/40 bg-emerald-100 text-emerald-900",
-  neutral: "border-amber-900/30 bg-amber-100 text-amber-900",
-  wary: "border-amber-800/40 bg-amber-200 text-amber-950",
-  hostile: "border-red-900/40 bg-red-100 text-red-900"
+  friendly: "badge badge-friendly",
+  neutral: "badge badge-neutral",
+  wary: "badge badge-wary",
+  hostile: "badge badge-hostile"
 };
 
 type SearchScope = "all" | "scenes" | "npcs";
@@ -288,7 +288,7 @@ export function SessionLivePage() {
   }
 
   return (
-    <section className={`session-live space-y-6 ${isDimMode ? "is-dim" : ""}`}>
+    <section className={`session-live h-screen w-full space-y-6 overflow-x-hidden px-6 py-5 ${isDimMode ? "is-dim" : ""}`}>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-amber-900/60">Session Live</p>
@@ -299,32 +299,36 @@ export function SessionLivePage() {
           )}
         </div>
         <div className="flex items-center gap-3">
-          <span className="rounded-full border border-amber-900/30 bg-amber-100/70 px-3 py-2 text-sm text-amber-900">
+          <span className="badge badge-neutral px-3 py-2 text-sm">
             {clockLabel}
           </span>
           <button
             type="button"
             onClick={() => setIsFocusMode((prev) => !prev)}
-            className="min-h-11 rounded-md border border-amber-900/30 px-3 py-2 text-sm text-amber-900 hover:bg-amber-100"
+            className="btn btn-subtle"
           >
             {isFocusMode ? "Exit Focus" : "Focus"}
           </button>
           <button
             type="button"
             onClick={() => setIsSearchOpen(true)}
-            className="min-h-11 rounded-md border border-amber-900/30 px-3 py-2 text-sm text-amber-900 hover:bg-amber-100"
+            className="btn btn-subtle"
             aria-label="Recherche"
           >
             🔍
           </button>
-          <Link to={`/sessions/${sessionId}`} className="min-h-11 rounded-md border border-amber-900/30 px-3 py-2">
+          <Link to={`/sessions/${sessionId}`} className="btn btn-subtle">
             Retour aux détails
           </Link>
         </div>
       </header>
 
-      <div className={`live-layout grid gap-4 ${isFocusMode ? "is-focus" : ""}`}>
-        <div className="scene-list space-y-3 rounded-md border border-amber-900/20 bg-amber-100/60 p-4">
+      <div
+        className={`live-layout mx-auto grid w-full max-w-[1200px] min-w-0 gap-4 ${
+          isFocusMode ? "is-focus" : ""
+        }`}
+      >
+        <div className="scene-list card card-muted min-w-0 space-y-3">
           <p className="text-sm font-semibold">Scènes</p>
           <div className="space-y-3">
             {orderedScenes.map((scene) => {
@@ -344,7 +348,7 @@ export function SessionLivePage() {
                     isSelected
                       ? "border-amber-900/60 bg-amber-50 text-amber-950 shadow-sm"
                       : "border-amber-900/20 bg-white/90 text-amber-950/80 hover:bg-amber-50"
-                  } ${flashSceneId === scene.id ? "flash-ring" : ""}`}
+                  } ${isSelected ? "is-selected" : ""} ${flashSceneId === scene.id ? "flash-ring" : ""}`}
                 >
                   <div className="flex flex-col">
                     <span className="font-medium">{scene.title || `Scène ${scene.order}`}</span>
@@ -358,10 +362,8 @@ export function SessionLivePage() {
                       event.stopPropagation();
                       updateScene(sessionId, scene.id, { done: !scene.done });
                     }}
-                    className={`min-h-11 rounded-full border px-3 text-xs ${
-                      scene.done
-                        ? "border-emerald-700/40 bg-emerald-100 text-emerald-900"
-                        : "border-amber-900/30 bg-amber-50 text-amber-900"
+                    className={`badge px-3 text-xs ${
+                      scene.done ? "badge-friendly" : "badge-neutral"
                     }`}
                   >
                     {scene.done ? "Terminée" : "En cours"}
@@ -370,15 +372,15 @@ export function SessionLivePage() {
               );
             })}
             {orderedScenes.length === 0 && (
-              <p className="rounded-md border border-dashed border-amber-900/20 p-3 text-sm text-amber-950/70">
+              <p className="card card-dashed card-compact text-sm text-amber-950/70">
                 Aucune scène pour le moment.
               </p>
             )}
           </div>
         </div>
 
-        <div className="scene-panel space-y-4 rounded-md border border-amber-900/20 bg-amber-50/60 p-4">
-          <div className="fade-in" key={selectedScene?.id ?? "empty"}>
+        <div className="scene-panel card card-muted flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden">
+          <div className="fade-in flex min-h-0 flex-col" key={selectedScene?.id ?? "empty"}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-amber-900/70">Scène sélectionnée</p>
@@ -389,7 +391,7 @@ export function SessionLivePage() {
                   <button
                     type="button"
                     onClick={() => updateScene(sessionId, selectedScene.id, { done: !selectedScene.done })}
-                    className="min-h-11 rounded-md border border-amber-900/30 px-3 py-2 text-sm text-amber-900 hover:bg-amber-100"
+                    className="btn btn-subtle"
                   >
                     {selectedScene.done ? "Marquer en cours" : "Marquer terminée"}
                   </button>
@@ -397,7 +399,7 @@ export function SessionLivePage() {
               )}
             </div>
 
-            <div className="mt-4 space-y-4">
+            <div className="mt-4 flex min-h-0 flex-col gap-4 overflow-y-auto pr-1">
               {isFocusMode && (
                 <div className="flex flex-wrap items-center gap-3">
                   <button
@@ -408,7 +410,7 @@ export function SessionLivePage() {
                       }
                     }}
                     disabled={!hasPrev}
-                    className="focus-nav min-h-11 rounded-md border border-amber-900/20 px-3 py-2 text-xs text-amber-900/80 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="focus-nav btn btn-subtle text-xs disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <span aria-hidden="true" className="text-base">
                       ‹
@@ -423,7 +425,7 @@ export function SessionLivePage() {
                       }
                     }}
                     disabled={!hasNext}
-                    className="focus-nav min-h-11 rounded-md border border-amber-900/20 px-3 py-2 text-xs text-amber-900/80 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="focus-nav btn btn-subtle text-xs disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <span>Suivante</span>
                     <span aria-hidden="true" className="text-base">
@@ -432,52 +434,48 @@ export function SessionLivePage() {
                   </button>
                 </div>
               )}
-              <section className="live-card space-y-2 rounded-md border border-amber-900/20 bg-white/70 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-amber-900/70">Texte de scène</p>
+              <section className="live-card space-y-2 p-4 sm:p-5">
+                <p className="live-label">Texte de scène</p>
                 <h5 className="text-base font-semibold">{selectedSceneTitle}</h5>
-                <div className="parchment-text text-sm text-amber-950/80">
+                <div className="parchment-text text-sm live-muted">
                   {selectedScene?.text || "Aucun texte pour le moment."}
                 </div>
               </section>
 
-              <section className="live-card space-y-2 rounded-md border border-amber-900/20 bg-white/70 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-amber-900/70">Personnages</p>
+              <section className="live-card space-y-2 p-4 sm:p-5">
+                <p className="live-label">Personnages</p>
                 <div className="space-y-2">
                   {linkedNpcs.map((npc) => (
                     <div
                       key={npc.id}
-                      className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-amber-900/20 bg-amber-50/60 px-3 py-2 text-sm"
+                      className="live-item card-compact flex min-h-11 items-center justify-between gap-3 text-sm"
                     >
                       <div>
                         <p className="font-medium">{npc.name || "PNJ sans nom"}</p>
-                        <p className="text-xs text-amber-900/70">{npc.role || "Aucun rôle"}</p>
+                        <p className="text-xs live-muted">{npc.role || "Aucun rôle"}</p>
                       </div>
-                      <span
-                        className={`rounded-full border px-2 py-1 text-xs ${
-                          attitudeStyles[npc.attitude] ?? attitudeStyles.neutral
-                        }`}
-                      >
+                      <span className={attitudeStyles[npc.attitude] ?? attitudeStyles.neutral}>
                         {npc.attitude}
                       </span>
                     </div>
                   ))}
                   {linkedNpcs.length === 0 && (
-                    <p className="rounded-md border border-dashed border-amber-900/20 p-3 text-sm text-amber-950/70">
+                    <p className="card card-dashed card-compact text-sm live-muted">
                       Aucun personnage lié à cette scène.
                     </p>
                   )}
                 </div>
               </section>
 
-              <section className="live-card flex min-h-[280px] flex-col rounded-md border border-amber-900/20 bg-white/70 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium uppercase tracking-wide text-amber-900/70">Notes en direct</p>
+              <section className="live-card flex min-h-[280px] flex-col p-4 sm:p-5">
+                <div className="flex flex-shrink-0 items-center justify-between">
+                  <p className="live-label">Notes en direct</p>
                 </div>
-                <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1">
+                <div className="mt-3 flex-1 min-h-0 space-y-2 overflow-y-auto pr-1">
                   {selectedScene?.liveNotes?.map((note) => (
                     <div
                       key={note.id}
-                      className="flex min-h-11 items-start justify-between gap-3 rounded-md border border-amber-900/20 bg-amber-50/60 px-3 py-2 text-sm"
+                      className="live-item card-compact flex min-h-11 items-start justify-between gap-3 text-sm"
                     >
                       {(() => {
                         const sourceScene = orderedScenes.find((scene) => scene.id === note.createdFromSceneId);
@@ -488,7 +486,7 @@ export function SessionLivePage() {
                             : selectedSceneTitle;
                         const labelText = sourceLabel === selectedSceneTitle ? `Depuis: ${selectedSceneTitle}` : `Depuis: ${sourceLabel}`;
                         return (
-                          <p className="text-xs text-amber-900/70">
+                          <p className="text-xs live-muted">
                             {new Date(note.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} —{" "}
                             <span className="font-medium">{labelText}</span> — {note.text}
                           </p>
@@ -506,7 +504,7 @@ export function SessionLivePage() {
                           }
                           removeSceneLiveNote(sessionId, selectedScene.id, note.id);
                         }}
-                        className="min-h-11 rounded-md border border-amber-900/20 px-3 py-1 text-xs text-amber-900/70 hover:bg-amber-100"
+                        className="btn btn-subtle text-xs"
                         aria-label="Supprimer la note"
                       >
                         Supprimer
@@ -514,18 +512,18 @@ export function SessionLivePage() {
                     </div>
                   ))}
                   {(selectedScene?.liveNotes?.length ?? 0) === 0 && (
-                    <p className="rounded-md border border-dashed border-amber-900/20 p-3 text-sm text-amber-950/70">
+                    <p className="card card-dashed card-compact text-sm live-muted">
                       Aucune note pour le moment.
                     </p>
                   )}
                 </div>
-                <div className="mt-3 flex flex-col gap-2 lg:flex-row">
-                  <label className="flex min-h-11 items-center gap-2 text-xs text-amber-900/70">
+                <div className="mt-3 flex flex-shrink-0 flex-col gap-2 lg:flex-row">
+                  <label className="flex min-h-11 items-center gap-2 text-xs live-muted">
                     Ajouter à :
                     <select
                       value={noteTargetSceneId ?? ""}
                       onChange={(event) => setNoteTargetSceneId(event.target.value || null)}
-                      className="min-h-11 rounded-md border border-amber-900/20 bg-white/80 px-3 py-2 text-sm text-amber-950"
+                      className="live-input min-h-11 w-44 flex-shrink-0 rounded-md px-3 py-2 text-sm"
                     >
                       {orderedScenes.map((scene, index) => {
                         const title = scene.title?.trim() || `Scène ${scene.order}`;
@@ -546,12 +544,12 @@ export function SessionLivePage() {
                     value={noteText}
                     onChange={(event) => setNoteText(event.target.value)}
                     placeholder="Ajouter une note rapide..."
-                    className="min-h-11 flex-1 rounded-md border border-amber-900/20 bg-white/80 px-3 py-2 text-sm"
+                    className="live-input min-h-11 flex-1 min-w-0 rounded-md px-3 py-2 text-sm"
                   />
                   <button
                     type="button"
                     onClick={handleAddNote}
-                    className="min-h-11 rounded-md bg-moss px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+                    className="btn btn-primary flex-shrink-0"
                   >
                     Ajouter
                   </button>
@@ -575,7 +573,7 @@ export function SessionLivePage() {
               <button
                 type="button"
                 onClick={() => setIsSearchOpen(false)}
-                className="min-h-11 rounded-md border border-amber-900/20 px-3 py-2 text-sm text-amber-900/80 hover:bg-amber-50"
+                className="btn btn-subtle text-sm"
               >
                 Fermer
               </button>
@@ -598,10 +596,8 @@ export function SessionLivePage() {
                     key={tab.id}
                     type="button"
                     onClick={() => setSearchScope(tab.id)}
-                    className={`min-h-11 rounded-md border px-3 py-2 ${
-                      searchScope === tab.id
-                        ? "border-amber-900/40 bg-amber-100 text-amber-950"
-                        : "border-amber-900/20 bg-white/70 text-amber-900/70 hover:bg-amber-50"
+                    className={`btn btn-subtle ${
+                      searchScope === tab.id ? "btn-active" : "text-amber-900/70"
                     }`}
                   >
                     {tab.label}
@@ -626,7 +622,7 @@ export function SessionLivePage() {
                           <button
                             type="button"
                             onClick={() => handleSelectScene(scene.id)}
-                            className="min-h-11 w-full rounded-md border border-amber-900/20 bg-white/70 px-3 py-2 text-left text-sm hover:bg-amber-50"
+                            className="card card-compact w-full text-left text-sm hover:bg-amber-50"
                           >
                             <p className="font-medium">{scene.title}</p>
                             {scene.snippet && <p className="text-xs text-amber-900/70">{scene.snippet}</p>}
@@ -648,7 +644,7 @@ export function SessionLivePage() {
                           <button
                             type="button"
                             onClick={() => setQuickNpcId(npc.id)}
-                            className="min-h-11 w-full rounded-md border border-amber-900/20 bg-white/70 px-3 py-2 text-left text-sm hover:bg-amber-50"
+                            className="card card-compact w-full text-left text-sm hover:bg-amber-50"
                           >
                             <p className="font-medium">{npc.title}</p>
                             {"subtitle" in npc && npc.subtitle && (
@@ -690,7 +686,7 @@ export function SessionLivePage() {
               <button
                 type="button"
                 onClick={() => setQuickNpcId(null)}
-                className="mt-4 min-h-11 rounded-md border border-amber-900/20 px-3 py-2 text-sm text-amber-900/80 hover:bg-amber-50"
+                className="btn btn-subtle mt-4"
               >
                 Fermer
               </button>

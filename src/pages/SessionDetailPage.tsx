@@ -43,14 +43,14 @@ export function SessionDetailPage() {
         <div className="flex flex-wrap gap-2">
           <Link
             to={`/session/${sessionId}/live`}
-            className="min-h-11 rounded-md border border-amber-900/30 px-3 py-2 text-sm text-amber-900 hover:bg-amber-100"
+            className="btn btn-subtle"
           >
             Open Session Live
           </Link>
           <button
             type="button"
             onClick={() => addScene(sessionId)}
-            className="min-h-11 rounded-md bg-moss px-3 py-2 text-sm font-medium text-white hover:opacity-90"
+            className="btn btn-primary"
           >
             Ajouter une scène
           </button>
@@ -86,7 +86,7 @@ export function SessionDetailPage() {
         />
       </label>
 
-      <div className="space-y-3 rounded-md border border-amber-900/20 p-3">
+      <div className="card card-compact space-y-3">
         <h3 className="text-lg font-semibold">Scènes</h3>
         <ul className="space-y-3">
           {[...session.scenes]
@@ -95,7 +95,7 @@ export function SessionDetailPage() {
               <li
                 id={`scene-${scene.id}`}
                 key={scene.id}
-                className={`rounded-md border border-amber-900/20 p-3 ${
+                className={`card card-compact ${
                   highlightSceneId === scene.id ? "ring-2 ring-amber-400/60" : ""
                 }`}
               >
@@ -106,7 +106,7 @@ export function SessionDetailPage() {
                       type="button"
                       onClick={() => moveScene(sessionId, scene.id, "up")}
                       disabled={index === 0}
-                      className="min-h-11 rounded-md border border-amber-900/20 px-2 py-2 text-sm text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="btn btn-subtle px-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Monter
                     </button>
@@ -114,14 +114,14 @@ export function SessionDetailPage() {
                       type="button"
                       onClick={() => moveScene(sessionId, scene.id, "down")}
                       disabled={index === orderedScenes.length - 1}
-                      className="min-h-11 rounded-md border border-amber-900/20 px-2 py-2 text-sm text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="btn btn-subtle px-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Descendre
                     </button>
                     <button
                       type="button"
                       onClick={() => deleteScene(sessionId, scene.id)}
-                      className="min-h-11 rounded-md border border-red-900/20 px-3 py-2 text-sm text-red-900 hover:bg-red-50"
+                      className="btn btn-danger"
                     >
                       Supprimer
                     </button>
@@ -144,7 +144,7 @@ export function SessionDetailPage() {
                     className="parchment-text rounded-md border border-amber-900/20 px-3 py-2"
                   />
                 </label>
-                <div className="mt-3 rounded-md border border-amber-900/20 p-2">
+                <div className="card card-compact mt-3">
                   <p className="text-xs font-medium text-amber-900">PNJ liés</p>
                   <div className="mt-2 space-y-2">
                     {data.npcs.map((npc) => {
@@ -152,7 +152,7 @@ export function SessionDetailPage() {
                       return (
                         <label
                           key={npc.id}
-                          className="flex min-h-11 items-center gap-2 rounded-md border border-amber-900/20 p-2 text-sm"
+                          className="card card-compact flex min-h-11 items-center gap-2 text-sm"
                         >
                           <input
                             type="checkbox"
@@ -175,7 +175,7 @@ export function SessionDetailPage() {
               </li>
             ))}
           {session.scenes.length === 0 && (
-            <li className="rounded-md border border-dashed border-amber-900/20 p-3 text-sm text-amber-950/70">
+            <li className="card card-dashed card-compact text-sm text-amber-950/70">
               Aucune scène pour le moment.
             </li>
           )}

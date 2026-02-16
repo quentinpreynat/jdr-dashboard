@@ -30,7 +30,7 @@ export function NpcListPage() {
             const npcId = createNpc();
             navigate(`/npcs/${npcId}`);
           }}
-          className="min-h-11 rounded-md bg-moss px-3 py-2 font-medium text-white hover:opacity-90"
+          className="btn btn-primary"
         >
           Nouveau PNJ
         </button>
@@ -38,7 +38,7 @@ export function NpcListPage() {
 
       <ul className="space-y-3">
         {data.npcs.map((npc) => (
-          <li key={npc.id} className="rounded-md border border-amber-900/20 p-3">
+          <li key={npc.id} className="card card-compact">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold">{npc.name || "PNJ sans nom"}</h3>
@@ -46,10 +46,7 @@ export function NpcListPage() {
                 <p className="text-xs text-amber-900/70">Apparitions : {countAppearances(npc.id)}</p>
               </div>
               <div className="flex gap-2">
-                <Link
-                  to={`/npcs/${npc.id}`}
-                  className="min-h-11 rounded-md border border-amber-900/30 px-3 py-2 text-sm hover:bg-amber-100"
-                >
+                <Link to={`/npcs/${npc.id}`} className="btn btn-subtle">
                   Ouvrir
                 </Link>
                 <button
@@ -60,7 +57,7 @@ export function NpcListPage() {
                       deleteNpc(npc.id);
                     }
                   }}
-                  className="min-h-11 rounded-md border border-red-900/20 px-3 py-2 text-sm text-red-900 hover:bg-red-50"
+                  className="btn btn-danger"
                 >
                   Supprimer
                 </button>
@@ -69,7 +66,7 @@ export function NpcListPage() {
           </li>
         ))}
         {data.npcs.length === 0 && (
-          <li className="rounded-md border border-dashed border-amber-900/20 p-4 text-sm text-amber-950/70">
+          <li className="card card-dashed card-compact text-sm text-amber-950/70">
             Aucun PNJ pour le moment.
           </li>
         )}
