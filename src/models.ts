@@ -3,8 +3,16 @@ export interface Campaign {
   title: string;
   summary: string;
   tone: string;
+  places: Place[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Place {
+  id: string;
+  name: string;
+  region?: string;
+  description?: string;
 }
 
 export interface LiveNote {
@@ -20,6 +28,7 @@ export interface Scene {
   text: string;
   order: number;
   linkedNpcIds: string[];
+  placeId?: string;
   done?: boolean;
   liveNotes?: LiveNote[];
 }

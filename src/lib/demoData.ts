@@ -7,6 +7,20 @@ export const DEMO_DATA: AppData = {
     summary:
       "Un trouble grandissant autour de la Grande Route de l'Est-Ouest, où les marchands disparaissent et où d'anciennes rumeurs ressurgissent.",
     tone: "Voyage méfiant, vieilles chansons, sourde inquiétude.",
+    places: [
+      {
+        id: "place_1",
+        name: "Auberge Abandonnée",
+        region: "Grande Route",
+        description: "Relais fatigué aux portes de la lande."
+      },
+      {
+        id: "place_2",
+        name: "Vieille tour",
+        region: "Vallon brumeux",
+        description: "Tour isolée dont la pierre suinte d'humidité."
+      }
+    ],
     createdAt: "2026-02-01T10:00:00.000Z",
     updatedAt: "2026-02-10T18:30:00.000Z"
   },
@@ -22,7 +36,8 @@ export const DEMO_DATA: AppData = {
           title: "Pluie au crépuscule",
           text: "L'auberge est bondée, boueuse et tendue après le coucher du soleil.",
           order: 1,
-          linkedNpcIds: []
+          linkedNpcIds: [],
+          placeId: "place_1"
         },
         {
           id: "scene_2",
@@ -55,7 +70,8 @@ export const DEMO_DATA: AppData = {
           title: "La tour silencieuse",
           text: "La pierre suinte d'humidité et un feu froid palpite au sommet.",
           order: 2,
-          linkedNpcIds: []
+          linkedNpcIds: [],
+          placeId: "place_2"
         }
       ],
       inTimeline: true,

@@ -2,12 +2,16 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { cloneDemoData } from "../lib/demoData";
 import { createId } from "../lib/id";
 import { createLocalStorageStore } from "../lib/storage";
-import type { AppData, Campaign, Npc, Scene, Session } from "../models";
+import type { AppData, Campaign, Npc, Place, Scene, Session } from "../models";
 
 interface AppDataContextValue {
   data: AppData;
   lastSavedAt: string | null;
   updateCampaign(fields: Partial<Omit<Campaign, "id">>): void;
+  addPlace(campaignId: string, place: Omit<Place, "id">): string;
+  updatePlace(campaignId: string, placeId: string, fields: Partial<Omit<Place, "id">>): void;
+  removePlace(campaignId: string, placeId: string): void;
+  findCampaignBySessionId(sessionId: string): Campaign | null;
   moveSessionTimeline(sessionId: string, direction: "up" | "down"): void;
   createSession(): string;
   deleteSession(sessionId: string): void;
@@ -54,6 +58,7 @@ function ensureCampaignTimestamps(campaign: Campaign): Campaign {
   const fallback = nowIso();
   return {
     ...campaign,
+    places: campaign.places ?? [],
     createdAt: ensureTimestamp(campaign.createdAt, fallback),
     updatedAt: ensureTimestamp(campaign.updatedAt, fallback)
   };
@@ -135,12 +140,14 @@ function isScene(value: unknown): value is Scene {
   }
   const linkedNpcIds = value.linkedNpcIds;
   const liveNotes = value.liveNotes;
+  const placeId = value.placeId;
   return (
     typeof value.id === "string" &&
     typeof value.title === "string" &&
     typeof value.text === "string" &&
     typeof value.order === "number" &&
     (linkedNpcIds === undefined || isStringArray(linkedNpcIds)) &&
+    (placeId === undefined || typeof placeId === "string") &&
     (value.done === undefined || typeof value.done === "boolean") &&
     (liveNotes === undefined || (Array.isArray(liveNotes) && liveNotes.every(isLiveNote)))
   );
@@ -184,6 +191,18 @@ function isNpc(value: unknown): value is Npc {
   );
 }
 
+function isPlace(value: unknown): value is Place {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    typeof value.id === "string" &&
+    typeof value.name === "string" &&
+    (value.region === undefined || typeof value.region === "string") &&
+    (value.description === undefined || typeof value.description === "string")
+  );
+}
+
 function isCampaign(value: unknown): value is Campaign {
   if (!isRecord(value)) {
     return false;
@@ -192,7 +211,8 @@ function isCampaign(value: unknown): value is Campaign {
     typeof value.id === "string" &&
     typeof value.title === "string" &&
     typeof value.summary === "string" &&
-    typeof value.tone === "string"
+    typeof value.tone === "string" &&
+    (value.places === undefined || (Array.isArray(value.places) && value.places.every(isPlace)))
   );
 }
 
@@ -256,6 +276,80 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setData((prev) => ({
           ...prev,
           campaign: { ...prev.campaign, ...fields, updatedAt: timestamp }
+        }));
+      },
+      findCampaignBySessionId(sessionId) {
+        if (!sessionId) {
+          return null;
+        }
+        const hasSession = data.sessions.some((session) => session.id === sessionId);
+        return hasSession ? data.campaign : null;
+      },
+      addPlace(campaignId, place) {
+        if (campaignId !== data.campaign.id) {
+          return "";
+        }
+        const timestamp = nowIso();
+        const placeId = createId("place");
+        setData((prev) => ({
+          ...prev,
+          campaign: {
+            ...prev.campaign,
+            places: [
+              ...(prev.campaign.places ?? []),
+              {
+                id: placeId,
+                name: place.name,
+                region: place.region ?? "",
+                description: place.description ?? ""
+              }
+            ],
+            updatedAt: timestamp
+          }
+        }));
+        return placeId;
+      },
+      updatePlace(campaignId, placeId, fields) {
+        if (campaignId !== data.campaign.id) {
+          return;
+        }
+        const timestamp = nowIso();
+        setData((prev) => ({
+          ...prev,
+          campaign: {
+            ...prev.campaign,
+            places: (prev.campaign.places ?? []).map((place) =>
+              place.id === placeId ? { ...place, ...fields } : place
+            ),
+            updatedAt: timestamp
+          }
+        }));
+      },
+      removePlace(campaignId, placeId) {
+        if (campaignId !== data.campaign.id) {
+          return;
+        }
+        const timestamp = nowIso();
+        setData((prev) => ({
+          ...prev,
+          campaign: {
+            ...prev.campaign,
+            places: (prev.campaign.places ?? []).filter((place) => place.id !== placeId),
+            updatedAt: timestamp
+          },
+          sessions: prev.sessions.map((session) => {
+            const hasSceneLink = session.scenes.some((scene) => scene.placeId === placeId);
+            if (!hasSceneLink) {
+              return session;
+            }
+            return {
+              ...session,
+              scenes: session.scenes.map((scene) =>
+                scene.placeId === placeId ? { ...scene, placeId: undefined } : scene
+              ),
+              updatedAt: timestamp
+            };
+          })
         }));
       },
       createSession() {

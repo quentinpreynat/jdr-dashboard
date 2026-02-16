@@ -9,7 +9,7 @@ const attitudeStyles: Record<string, string> = {
   hostile: "badge badge-hostile"
 };
 
-type SearchScope = "all" | "scenes" | "npcs";
+type SearchScope = "all" | "scenes" | "npcs" | "places";
 type SearchResult =
   | {
       id: string;
@@ -20,6 +20,13 @@ type SearchResult =
   | {
       id: string;
       type: "npc";
+      title: string;
+      subtitle?: string;
+      snippet?: string;
+    }
+  | {
+      id: string;
+      type: "place";
       title: string;
       subtitle?: string;
       snippet?: string;
@@ -53,8 +60,11 @@ function makeSnippet(value: string, query: string, maxLength: number = 120): str
 
 export function SessionLivePage() {
   const { sessionId } = useParams<{ sessionId: string }>();
-  const { data, addSceneLiveNote, removeSceneLiveNote, updateScene } = useAppData();
+  const { data, addSceneLiveNote, removeSceneLiveNote, updateScene, findCampaignBySessionId } =
+    useAppData();
   const session = data.sessions.find((entry) => entry.id === sessionId);
+  const campaign = sessionId ? findCampaignBySessionId(sessionId) : null;
+  const places = campaign?.places ?? [];
 
   const orderedScenes = useMemo(() => {
     if (!session) {
@@ -91,6 +101,7 @@ export function SessionLivePage() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [searchScope, setSearchScope] = useState<SearchScope>("all");
   const [quickNpcId, setQuickNpcId] = useState<string | null>(null);
+  const [quickPlaceId, setQuickPlaceId] = useState<string | null>(null);
   const [flashSceneId, setFlashSceneId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
@@ -129,6 +140,7 @@ export function SessionLivePage() {
       setDebouncedQuery("");
       setSearchScope("all");
       setQuickNpcId(null);
+      setQuickPlaceId(null);
       return;
     }
     const timer = window.setTimeout(() => setDebouncedQuery(searchQuery), 150);
@@ -143,13 +155,15 @@ export function SessionLivePage() {
   }, [isSearchOpen]);
 
   useEffect(() => {
-    if (!isSearchOpen && !quickNpcId) {
+    if (!isSearchOpen && !quickNpcId && !quickPlaceId) {
       return;
     }
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         if (quickNpcId) {
           setQuickNpcId(null);
+        } else if (quickPlaceId) {
+          setQuickPlaceId(null);
         } else {
           setIsSearchOpen(false);
         }
@@ -157,7 +171,7 @@ export function SessionLivePage() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isSearchOpen, quickNpcId]);
+  }, [isSearchOpen, quickNpcId, quickPlaceId]);
 
 
   if (!session || !sessionId) {
@@ -231,11 +245,14 @@ export function SessionLivePage() {
     : selectedScene
       ? `Scène ${selectedScene.order}`
       : "Scène";
+  const selectedPlace = selectedScene?.placeId
+    ? places.find((place) => place.id === selectedScene.placeId) ?? null
+    : null;
 
   const searchResults = useMemo(() => {
     const trimmed = debouncedQuery.trim();
     if (!trimmed || !session) {
-      return { scenes: [] as SearchResult[], npcs: [] as SearchResult[] };
+      return { scenes: [] as SearchResult[], npcs: [] as SearchResult[], places: [] as SearchResult[] };
     }
     const normalizedQuery = normalizeText(trimmed);
 
@@ -275,10 +292,39 @@ export function SessionLivePage() {
           makeSnippet(npc.locationText, trimmed)
       }));
 
-    return { scenes: sceneResults, npcs: npcResults };
-  }, [debouncedQuery, session, sessionNpcs]);
+    const placeResults: SearchResult[] = places
+      .filter((place) => {
+        const haystack = [place.name, place.region, place.description].filter(Boolean).join(" ");
+        return normalizeText(haystack).includes(normalizedQuery);
+      })
+      .map((place) => ({
+        id: place.id,
+        type: "place",
+        title: place.name || "Lieu sans nom",
+        subtitle: place.region || "Lieu de campagne",
+        snippet: makeSnippet(place.description ?? "", trimmed)
+      }));
+
+    return { scenes: sceneResults, npcs: npcResults, places: placeResults };
+  }, [debouncedQuery, session, sessionNpcs, places]);
 
   const quickNpc = quickNpcId ? data.npcs.find((npc) => npc.id === quickNpcId) : null;
+  const quickPlace = quickPlaceId ? places.find((place) => place.id === quickPlaceId) : null;
+  const quickPlaceScenes = useMemo(() => {
+    if (!quickPlace) {
+      return { currentSession: [], otherCount: 0 };
+    }
+    const all = data.sessions.flatMap((entry) =>
+      entry.scenes
+        .filter((scene) => scene.placeId === quickPlace.id)
+        .map((scene) => ({ session: entry, scene }))
+    );
+    const currentSession = session
+      ? all.filter((entry) => entry.session.id === session.id)
+      : [];
+    const otherCount = all.length - currentSession.length;
+    return { currentSession, otherCount };
+  }, [quickPlace, data.sessions, session]);
 
   function handleSelectScene(sceneId: string) {
     setSelectedSceneId(sceneId);
@@ -385,6 +431,12 @@ export function SessionLivePage() {
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-amber-900/70">Scène sélectionnée</p>
                 <h4 className="text-lg font-semibold">{selectedSceneTitle}</h4>
+                {selectedPlace && (
+                  <p className="text-sm live-muted">
+                    📍 {selectedPlace.name}
+                    {selectedPlace.region ? ` — ${selectedPlace.region}` : ""}
+                  </p>
+                )}
               </div>
               {selectedScene && (
                 <div className="flex flex-wrap items-center gap-2">
@@ -590,7 +642,8 @@ export function SessionLivePage() {
                 {([
                   { id: "all", label: "Tout" },
                   { id: "scenes", label: "Scènes" },
-                  { id: "npcs", label: "PNJ" }
+                  { id: "npcs", label: "PNJ" },
+                  { id: "places", label: "Lieux" }
                 ] as const).map((tab) => (
                   <button
                     key={tab.id}
@@ -607,6 +660,9 @@ export function SessionLivePage() {
             </div>
 
             <div className="mt-4 space-y-4">
+              {searchScope === "places" && places.length === 0 && (
+                <p className="text-sm text-amber-950/70">Aucun lieu disponible dans la campagne.</p>
+              )}
               {debouncedQuery.trim() === "" && (
                 <p className="text-sm text-amber-950/70">Saisissez une recherche pour afficher les résultats.</p>
               )}
@@ -659,8 +715,34 @@ export function SessionLivePage() {
                 )}
 
               {debouncedQuery.trim() !== "" &&
+                (searchScope === "all" || searchScope === "places") &&
+                searchResults.places.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold">Lieux</h4>
+                    <ul className="space-y-2">
+                      {searchResults.places.map((place) => (
+                        <li key={place.id}>
+                          <button
+                            type="button"
+                            onClick={() => setQuickPlaceId(place.id)}
+                            className="card card-compact w-full text-left text-sm hover:bg-amber-50"
+                          >
+                            <p className="font-medium">{place.title}</p>
+                            {"subtitle" in place && place.subtitle && (
+                              <p className="text-xs text-amber-900/70">{place.subtitle}</p>
+                            )}
+                            {place.snippet && <p className="text-xs text-amber-900/70">{place.snippet}</p>}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+              {debouncedQuery.trim() !== "" &&
                 searchResults.scenes.length === 0 &&
-                searchResults.npcs.length === 0 && (
+                searchResults.npcs.length === 0 &&
+                searchResults.places.length === 0 && (
                   <p className="text-sm text-amber-950/70">Aucun résultat trouvé.</p>
                 )}
             </div>
@@ -687,6 +769,56 @@ export function SessionLivePage() {
                 type="button"
                 onClick={() => setQuickNpcId(null)}
                 className="btn btn-subtle mt-4"
+              >
+                Fermer
+              </button>
+            </div>
+          )}
+
+          {quickPlace && (
+            <div className="live-search-panel live-quick-panel">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold">{quickPlace.name || "Lieu sans nom"}</p>
+                  {quickPlace.region && <p className="text-xs text-amber-900/70">{quickPlace.region}</p>}
+                </div>
+              </div>
+              {quickPlace.description && (
+                <p className="mt-3 text-sm text-amber-950/80">{quickPlace.description}</p>
+              )}
+              <div className="mt-4 space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/70">
+                  Scènes (session courante)
+                </p>
+                {quickPlaceScenes.currentSession.length > 0 ? (
+                  <ul className="space-y-2">
+                    {quickPlaceScenes.currentSession.map(({ scene }) => (
+                      <li key={scene.id}>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectScene(scene.id)}
+                          className="card card-compact w-full text-left text-sm hover:bg-amber-50"
+                        >
+                          <p className="font-medium">{scene.title || `Scène ${scene.order}`}</p>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-amber-950/70">Aucune scène liée dans cette session.</p>
+                )}
+                {quickPlaceScenes.otherCount > 0 && (
+                  <p className="text-xs text-amber-900/70">
+                    Utilisé dans {quickPlaceScenes.otherCount} autre
+                    {quickPlaceScenes.otherCount > 1 ? "s" : ""} scène
+                    {quickPlaceScenes.otherCount > 1 ? "s" : ""} de la campagne.
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuickPlaceId(null)}
+                className="mt-4 min-h-11 rounded-md border border-amber-900/20 px-3 py-2 text-sm text-amber-900/80 hover:bg-amber-50"
               >
                 Fermer
               </button>

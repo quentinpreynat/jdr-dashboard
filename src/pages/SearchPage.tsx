@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAppData } from "../state/AppDataContext";
 
-type ResultType = "npc" | "session" | "scene";
+type ResultType = "npc" | "session" | "scene" | "place";
 
 type SearchResult = {
   id: string;
@@ -105,11 +105,33 @@ export function SearchPage() {
         }))
     );
 
-    return [...npcResults, ...sessionResults, ...sceneResults];
+    const placeResults: SearchResult[] = (data.campaign.places ?? [])
+      .filter((place) => {
+        const haystack = [place.name, place.region, place.description].filter(Boolean).join(" ");
+        return normalizeText(haystack).includes(normalizedQuery);
+      })
+      .map((place) => {
+        const usageCount = data.sessions.reduce((count, session) => {
+          return count + session.scenes.filter((scene) => scene.placeId === place.id).length;
+        }, 0);
+        const snippet =
+          makeSnippet(place.description ?? "", trimmed) ?? makeSnippet(place.region ?? "", trimmed);
+        const usageLabel = usageCount > 0 ? `Utilisé dans ${usageCount} scène${usageCount > 1 ? "s" : ""}` : "Aucune scène";
+        return {
+          id: place.id,
+          type: "place",
+          title: place.name || "Lieu sans nom",
+          subtitle: place.region ? `${place.region} • ${usageLabel}` : usageLabel,
+          snippet,
+          href: `/campaign/${data.campaign.id}/places?place=${place.id}`
+        };
+      });
+
+    return [...npcResults, ...sessionResults, ...sceneResults, ...placeResults];
   }, [data, query]);
 
   const grouped = useMemo(() => {
-    const groups: Record<ResultType, SearchResult[]> = { npc: [], session: [], scene: [] };
+    const groups: Record<ResultType, SearchResult[]> = { npc: [], session: [], scene: [], place: [] };
     for (const result of results) {
       groups[result.type].push(result);
     }
@@ -183,6 +205,23 @@ export function SearchPage() {
           <h3 className="text-lg font-semibold">Scènes</h3>
           <ul className="space-y-2">
             {grouped.scene.map((result) => (
+              <li key={result.id} className="card card-compact">
+                <Link to={result.href} className="block">
+                  <p className="font-medium">{result.title}</p>
+                  {result.subtitle && <p className="text-xs text-amber-900/70">{result.subtitle}</p>}
+                  {result.snippet && <p className="mt-1 text-sm text-amber-950/80">{result.snippet}</p>}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {grouped.place.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-lg font-semibold">Lieux</h3>
+          <ul className="space-y-2">
+            {grouped.place.map((result) => (
               <li key={result.id} className="card card-compact">
                 <Link to={result.href} className="block">
                   <p className="font-medium">{result.title}</p>

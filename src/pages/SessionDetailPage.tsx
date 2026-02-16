@@ -9,6 +9,7 @@ export function SessionDetailPage() {
     useAppData();
   const session = data.sessions.find((entry) => entry.id === sessionId);
   const [highlightSceneId, setHighlightSceneId] = useState<string | null>(null);
+  const places = data.campaign.places ?? [];
 
   useEffect(() => {
     if (!session || !sessionId) {
@@ -134,6 +135,26 @@ export function SessionDetailPage() {
                     onChange={(event) => updateScene(sessionId, scene.id, { title: event.target.value })}
                     className="parchment-text rounded-md border border-amber-900/20 px-3 py-2"
                   />
+                </label>
+                <label className="mb-2 flex flex-col gap-1">
+                  <span className="text-sm font-medium">Lieu</span>
+                  <select
+                    value={scene.placeId ?? ""}
+                    onChange={(event) =>
+                      updateScene(sessionId, scene.id, {
+                        placeId: event.target.value ? event.target.value : undefined
+                      })
+                    }
+                    className="parchment-text rounded-md border border-amber-900/20 px-3 py-2"
+                  >
+                    <option value="">Aucun</option>
+                    {places.map((place) => (
+                      <option key={place.id} value={place.id}>
+                        {place.name || "Lieu sans nom"}
+                        {place.region ? ` — ${place.region}` : ""}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="text-sm font-medium">Texte</span>
