@@ -62,6 +62,8 @@ export function SessionLivePage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const { data, addSceneLiveNote, removeSceneLiveNote, updateScene, findCampaignBySessionId } =
     useAppData();
+  const containerRef = useRef<HTMLElement | null>(null);
+  const noteInputRef = useRef<HTMLInputElement | null>(null);
   const session = data.sessions.find((entry) => entry.id === sessionId);
   const campaign = sessionId ? findCampaignBySessionId(sessionId) : null;
   const places = campaign?.places ?? [];
@@ -225,6 +227,58 @@ export function SessionLivePage() {
     }
   }, [selectedScene, hasNext, orderedScenes, selectedIndex]);
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      // Keyboard shortcuts are scoped to the page and avoid direct modal control here.
+      if (event.key === "ArrowLeft") {
+        if (hasPrev) {
+          setSelectedSceneId(orderedScenes[selectedIndex - 1].id);
+        }
+      } else if (event.key === "ArrowRight") {
+        if (hasNext) {
+          setSelectedSceneId(orderedScenes[selectedIndex + 1].id);
+        }
+      } else if (event.key.toLowerCase() === "f") {
+        setIsFocusMode((prev) => !prev);
+      } else if (event.key.toLowerCase() === "n") {
+        noteInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [hasPrev, hasNext, orderedScenes, selectedIndex]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) {
+      return;
+    }
+    let startX: number | null = null;
+    const onPointerDown = (event: PointerEvent) => {
+      startX = event.clientX;
+    };
+    const onPointerUp = (event: PointerEvent) => {
+      if (startX === null) {
+        return;
+      }
+      const dx = event.clientX - startX;
+      const threshold = 60;
+      if (dx > threshold && hasPrev) {
+        setSelectedSceneId(orderedScenes[selectedIndex - 1].id);
+      } else if (dx < -threshold && hasNext) {
+        setSelectedSceneId(orderedScenes[selectedIndex + 1].id);
+      }
+      startX = null;
+    };
+    // Simple horizontal swipe, avoids interfering with modal clicks.
+    el.addEventListener("pointerdown", onPointerDown);
+    el.addEventListener("pointerup", onPointerUp);
+    return () => {
+      el.removeEventListener("pointerdown", onPointerDown);
+      el.removeEventListener("pointerup", onPointerUp);
+    };
+  }, [orderedScenes, selectedIndex, hasPrev, hasNext]);
+
   function handleAddNote() {
     if (!selectedScene) {
       return;
@@ -310,6 +364,7 @@ export function SessionLivePage() {
 
   const quickNpc = quickNpcId ? data.npcs.find((npc) => npc.id === quickNpcId) : null;
   const quickPlace = quickPlaceId ? places.find((place) => place.id === quickPlaceId) : null;
+  const hasQuickPanel = Boolean(quickNpc || quickPlace);
   const quickPlaceScenes = useMemo(() => {
     if (!quickPlace) {
       return { currentSession: [], otherCount: 0 };
@@ -334,7 +389,10 @@ export function SessionLivePage() {
   }
 
   return (
-    <section className={`session-live h-screen w-full space-y-6 overflow-x-hidden px-6 py-5 ${isDimMode ? "is-dim" : ""}`}>
+    <section
+      ref={containerRef}
+      className={`session-live h-screen w-full space-y-6 overflow-x-hidden px-6 py-5 ${isDimMode ? "is-dim" : ""}`}
+    >
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-amber-900/60">Session Live</p>
@@ -371,8 +429,10 @@ export function SessionLivePage() {
 
       <div
         className={`live-layout mx-auto grid w-full max-w-[1200px] min-w-0 gap-4 ${
-          isFocusMode ? "is-focus" : ""
-        }`}
+          hasQuickPanel
+            ? "lg:grid-cols-[280px_minmax(0,1fr)_320px]"
+            : "lg:grid-cols-[280px_minmax(0,1fr)_0px]"
+        } ${isFocusMode ? "is-focus" : ""}`}
       >
         <div className="scene-list card card-muted min-w-0 space-y-3">
           <p className="text-sm font-semibold">Scènes</p>
@@ -432,10 +492,18 @@ export function SessionLivePage() {
                 <p className="text-xs font-medium uppercase tracking-wide text-amber-900/70">Scène sélectionnée</p>
                 <h4 className="text-lg font-semibold">{selectedSceneTitle}</h4>
                 {selectedPlace && (
-                  <p className="text-sm live-muted">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      console.info("[Live] open place quick view", selectedPlace.id);
+                      setQuickPlaceId(selectedPlace.id);
+                    }}
+                    className="text-sm live-muted cursor-pointer text-left hover:underline"
+                    aria-label={`Ouvrir le lieu ${selectedPlace.name}`}
+                  >
                     📍 {selectedPlace.name}
                     {selectedPlace.region ? ` — ${selectedPlace.region}` : ""}
-                  </p>
+                  </button>
                 )}
               </div>
               {selectedScene && (
@@ -498,9 +566,11 @@ export function SessionLivePage() {
                 <p className="live-label">Personnages</p>
                 <div className="space-y-2">
                   {linkedNpcs.map((npc) => (
-                    <div
+                    <button
+                      type="button"
+                      onClick={() => setQuickNpcId(npc.id)}
                       key={npc.id}
-                      className="live-item card-compact flex min-h-11 items-center justify-between gap-3 text-sm"
+                      className="live-item card-compact flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm hover:bg-amber-50 cursor-pointer"
                     >
                       <div>
                         <p className="font-medium">{npc.name || "PNJ sans nom"}</p>
@@ -509,7 +579,7 @@ export function SessionLivePage() {
                       <span className={attitudeStyles[npc.attitude] ?? attitudeStyles.neutral}>
                         {npc.attitude}
                       </span>
-                    </div>
+                    </button>
                   ))}
                   {linkedNpcs.length === 0 && (
                     <p className="card card-dashed card-compact text-sm live-muted">
@@ -593,6 +663,7 @@ export function SessionLivePage() {
                     </select>
                   </label>
                   <input
+                    ref={noteInputRef}
                     value={noteText}
                     onChange={(event) => setNoteText(event.target.value)}
                     placeholder="Ajouter une note rapide..."
@@ -610,6 +681,91 @@ export function SessionLivePage() {
             </div>
           </div>
         </div>
+
+        <aside
+          className={`card card-muted min-h-0 min-w-0 overflow-y-auto p-4 transition-transform duration-250 ease-out ${
+            hasQuickPanel ? "translate-x-0" : "translate-x-full pointer-events-none"
+          }`}
+        >
+            {quickNpc ? (
+              <div className="live-quick-panel">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold">{quickNpc.name || "PNJ sans nom"}</p>
+                    <p className="text-xs text-amber-900/70">{quickNpc.role || "Aucun rôle"}</p>
+                  </div>
+                  <span
+                    className={`rounded-full border px-2 py-1 text-xs ${
+                      attitudeStyles[quickNpc.attitude] ?? attitudeStyles.neutral
+                    }`}
+                  >
+                    {quickNpc.attitude}
+                  </span>
+                </div>
+                {quickNpc.description && (
+                  <p className="mt-3 text-sm text-amber-950/80">{quickNpc.description}</p>
+                )}
+                {quickNpc.notes && <p className="mt-2 text-sm text-amber-950/70">{quickNpc.notes}</p>}
+                <button
+                  type="button"
+                  onClick={() => setQuickNpcId(null)}
+                  className="btn btn-subtle mt-4"
+                >
+                  Fermer
+                </button>
+              </div>
+            ) : null}
+
+            {!quickNpc && quickPlace ? (
+              <div className="live-quick-panel">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold">{quickPlace.name || "Lieu sans nom"}</p>
+                    {quickPlace.region && <p className="text-xs text-amber-900/70">{quickPlace.region}</p>}
+                  </div>
+                </div>
+                {quickPlace.description && (
+                  <p className="mt-3 text-sm text-amber-950/80">{quickPlace.description}</p>
+                )}
+                <div className="mt-4 space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/70">
+                    Scènes (session courante)
+                  </p>
+                  {quickPlaceScenes.currentSession.length > 0 ? (
+                    <ul className="space-y-2">
+                      {quickPlaceScenes.currentSession.map(({ scene }) => (
+                        <li key={scene.id}>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectScene(scene.id)}
+                            className="card card-compact w-full text-left text-sm hover:bg-amber-50"
+                          >
+                            <p className="font-medium">{scene.title || `Scène ${scene.order}`}</p>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-amber-950/70">Aucune scène liée dans cette session.</p>
+                  )}
+                  {quickPlaceScenes.otherCount > 0 && (
+                    <p className="text-xs text-amber-900/70">
+                      Utilisé dans {quickPlaceScenes.otherCount} autre
+                      {quickPlaceScenes.otherCount > 1 ? "s" : ""} scène
+                      {quickPlaceScenes.otherCount > 1 ? "s" : ""} de la campagne.
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setQuickPlaceId(null)}
+                  className="mt-4 min-h-11 rounded-md border border-amber-900/20 px-3 py-2 text-sm text-amber-900/80 hover:bg-amber-50"
+                >
+                  Fermer
+                </button>
+              </div>
+            ) : null}
+        </aside>
       </div>
       {isSearchOpen && (
         <div className="live-search-overlay">
@@ -748,82 +904,6 @@ export function SessionLivePage() {
             </div>
           </div>
 
-          {quickNpc && (
-            <div className="live-search-panel live-quick-panel">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold">{quickNpc.name || "PNJ sans nom"}</p>
-                  <p className="text-xs text-amber-900/70">{quickNpc.role || "Aucun rôle"}</p>
-                </div>
-                <span
-                  className={`rounded-full border px-2 py-1 text-xs ${
-                    attitudeStyles[quickNpc.attitude] ?? attitudeStyles.neutral
-                  }`}
-                >
-                  {quickNpc.attitude}
-                </span>
-              </div>
-              {quickNpc.description && <p className="mt-3 text-sm text-amber-950/80">{quickNpc.description}</p>}
-              {quickNpc.notes && <p className="mt-2 text-sm text-amber-950/70">{quickNpc.notes}</p>}
-              <button
-                type="button"
-                onClick={() => setQuickNpcId(null)}
-                className="btn btn-subtle mt-4"
-              >
-                Fermer
-              </button>
-            </div>
-          )}
-
-          {quickPlace && (
-            <div className="live-search-panel live-quick-panel">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold">{quickPlace.name || "Lieu sans nom"}</p>
-                  {quickPlace.region && <p className="text-xs text-amber-900/70">{quickPlace.region}</p>}
-                </div>
-              </div>
-              {quickPlace.description && (
-                <p className="mt-3 text-sm text-amber-950/80">{quickPlace.description}</p>
-              )}
-              <div className="mt-4 space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/70">
-                  Scènes (session courante)
-                </p>
-                {quickPlaceScenes.currentSession.length > 0 ? (
-                  <ul className="space-y-2">
-                    {quickPlaceScenes.currentSession.map(({ scene }) => (
-                      <li key={scene.id}>
-                        <button
-                          type="button"
-                          onClick={() => handleSelectScene(scene.id)}
-                          className="card card-compact w-full text-left text-sm hover:bg-amber-50"
-                        >
-                          <p className="font-medium">{scene.title || `Scène ${scene.order}`}</p>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-amber-950/70">Aucune scène liée dans cette session.</p>
-                )}
-                {quickPlaceScenes.otherCount > 0 && (
-                  <p className="text-xs text-amber-900/70">
-                    Utilisé dans {quickPlaceScenes.otherCount} autre
-                    {quickPlaceScenes.otherCount > 1 ? "s" : ""} scène
-                    {quickPlaceScenes.otherCount > 1 ? "s" : ""} de la campagne.
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setQuickPlaceId(null)}
-                className="mt-4 min-h-11 rounded-md border border-amber-900/20 px-3 py-2 text-sm text-amber-900/80 hover:bg-amber-50"
-              >
-                Fermer
-              </button>
-            </div>
-          )}
         </div>
       )}
     </section>

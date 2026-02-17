@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
 import { useAppData } from "../state/AppDataContext";
 
 export function CampaignDashboardPage() {
@@ -22,9 +21,6 @@ export function CampaignDashboardPage() {
             Modifiez l&apos;identité de la campagne et suivez les points clés de la chronologie.
           </p>
         </div>
-        <Link to={`/campaign/${data.campaign.id}/places`} className="btn btn-subtle">
-          Lieux
-        </Link>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

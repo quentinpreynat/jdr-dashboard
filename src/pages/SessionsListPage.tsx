@@ -41,36 +41,39 @@ export function SessionsListPage() {
 
       <ul className="space-y-3">
         {data.sessions.map((session) => (
-          <li key={session.id} className="card card-compact">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-semibold">{session.title || "Session sans titre"}</h3>
-                <p className="text-sm text-amber-950/80">{session.objective || "Aucun objectif pour le moment."}</p>
-                <p className="text-xs text-amber-900/70">
-                  Mise à jour : {formatUpdatedAt(session.updatedAt)}
-                </p>
-                <p className="text-xs text-amber-900/70">
-                  PNJ liés : {countLinkedNpcs(session.id)}
-                </p>
+          <li key={session.id}>
+            <Link to={`/sessions/${session.id}`} className="card card-compact block">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold">{session.title || "Session sans titre"}</h3>
+                  <p className="text-sm text-amber-950/80">
+                    {session.objective || "Aucun objectif pour le moment."}
+                  </p>
+                  <p className="text-xs text-amber-900/70">
+                    Mise à jour : {formatUpdatedAt(session.updatedAt)}
+                  </p>
+                  <p className="text-xs text-amber-900/70">
+                    PNJ liés : {countLinkedNpcs(session.id)}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      const confirmed = window.confirm("Supprimer cette session ?");
+                      if (confirmed) {
+                        deleteSession(session.id);
+                      }
+                    }}
+                    className="btn btn-danger"
+                  >
+                    Supprimer
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Link to={`/sessions/${session.id}`} className="btn btn-subtle">
-                  Ouvrir
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const confirmed = window.confirm("Supprimer cette session ?");
-                    if (confirmed) {
-                      deleteSession(session.id);
-                    }
-                  }}
-                  className="btn btn-danger"
-                >
-                  Supprimer
-                </button>
-              </div>
-            </div>
+            </Link>
           </li>
         ))}
         {data.sessions.length === 0 && (

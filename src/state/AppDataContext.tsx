@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { cloneDemoData } from "../lib/demoData";
+import { addSnapshot, db, pruneSnapshots } from "../lib/db";
 import { createId } from "../lib/id";
+import { migrateIfNeeded } from "../lib/migrateFromLocalStorage";
 import { createLocalStorageStore } from "../lib/storage";
 import type { AppData, Campaign, Npc, Place, Scene, Session } from "../models";
 
@@ -263,8 +265,29 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
+    void migrateIfNeeded();
+    void db.open().catch((error) => {
+      console.error("IndexedDB: failed to open database", error);
+    });
+  }, []);
+
+  useEffect(() => {
     store.save(data);
     setLastSavedAt(nowIso());
+  }, [data]);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      void addSnapshot(data)
+        .then(() => pruneSnapshots(20))
+        .catch((error) => {
+          console.error("Snapshot: failed to persist to IndexedDB", error);
+        });
+    }, 500);
+
+    return () => {
+      window.clearTimeout(handle);
+    };
   }, [data]);
 
   const value = useMemo<AppDataContextValue>(

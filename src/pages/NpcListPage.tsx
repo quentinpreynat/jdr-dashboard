@@ -38,31 +38,32 @@ export function NpcListPage() {
 
       <ul className="space-y-3">
         {data.npcs.map((npc) => (
-          <li key={npc.id} className="card card-compact">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-semibold">{npc.name || "PNJ sans nom"}</h3>
-                <p className="text-sm text-amber-950/80">{npc.role || "Aucun rôle défini."}</p>
-                <p className="text-xs text-amber-900/70">Apparitions : {countAppearances(npc.id)}</p>
+          <li key={npc.id}>
+            <Link to={`/npcs/${npc.id}`} className="card card-compact block">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold">{npc.name || "PNJ sans nom"}</h3>
+                  <p className="text-sm text-amber-950/80">{npc.role || "Aucun rôle défini."}</p>
+                  <p className="text-xs text-amber-900/70">Apparitions : {countAppearances(npc.id)}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      const confirmed = window.confirm("Supprimer ce PNJ ?");
+                      if (confirmed) {
+                        deleteNpc(npc.id);
+                      }
+                    }}
+                    className="btn btn-danger"
+                  >
+                    Supprimer
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Link to={`/npcs/${npc.id}`} className="btn btn-subtle">
-                  Ouvrir
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const confirmed = window.confirm("Supprimer ce PNJ ?");
-                    if (confirmed) {
-                      deleteNpc(npc.id);
-                    }
-                  }}
-                  className="btn btn-danger"
-                >
-                  Supprimer
-                </button>
-              </div>
-            </div>
+            </Link>
           </li>
         ))}
         {data.npcs.length === 0 && (

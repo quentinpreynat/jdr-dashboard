@@ -8,7 +8,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }): string =>
   }`;
 
 export function AppShell() {
-  const { resetDemoData, lastSavedAt } = useAppData();
+  const { data, resetDemoData, lastSavedAt } = useAppData();
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const location = useLocation();
   const isLiveMode = location.pathname.startsWith("/session/") && location.pathname.endsWith("/live");
@@ -75,6 +75,9 @@ export function AppShell() {
           <NavLink to="/npcs" className={navLinkClass}>
             PNJ
           </NavLink>
+          <NavLink to={`/campaign/${data.campaign.id}/places`} className={navLinkClass}>
+            Lieux
+          </NavLink>
           <NavLink to="/search" className={navLinkClass}>
             Recherche
           </NavLink>
@@ -95,6 +98,9 @@ export function AppShell() {
             </NavLink>
             <NavLink to="/npcs" className={navLinkClass}>
               PNJ
+            </NavLink>
+            <NavLink to={`/campaign/${data.campaign.id}/places`} className={navLinkClass}>
+              Lieux
             </NavLink>
             <NavLink to="/search" className={navLinkClass}>
               Recherche
