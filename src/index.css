@@ -222,16 +222,6 @@ h4 {
   transition: opacity 220ms ease, transform 220ms ease, max-width 220ms ease;
 }
 
-.live-layout.is-focus {
-  grid-template-columns: 0% 100%;
-}
-
-.live-layout.is-focus .scene-list {
-  opacity: 0;
-  transform: translateX(-12px);
-  max-width: 0;
-  pointer-events: none;
-}
 
 .session-live {
   transition: background-color 220ms ease, color 220ms ease;
