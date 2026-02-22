@@ -48,7 +48,7 @@ export async function addSnapshot(data: unknown): Promise<string> {
 }
 
 export async function getSnapshots(
-  limit = 20
+  limit = 20,
 ): Promise<{ id: string; createdAt: number }[]> {
   const rows = await db.snapshots
     .orderBy("createdAt")

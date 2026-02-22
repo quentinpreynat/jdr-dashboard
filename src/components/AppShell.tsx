@@ -11,7 +11,9 @@ export function AppShell() {
   const { data, resetDemoData, lastSavedAt } = useAppData();
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const location = useLocation();
-  const isLiveMode = location.pathname.startsWith("/session/") && location.pathname.endsWith("/live");
+  const isLiveMode =
+    location.pathname.startsWith("/session/") &&
+    location.pathname.endsWith("/live");
 
   const savedLabel = lastSavedAt
     ? `Enregistré · ${new Date(lastSavedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`
@@ -29,7 +31,9 @@ export function AppShell() {
   }, []);
 
   const onReset = () => {
-    const confirmed = window.confirm("Réinitialiser toutes les données locales avec les valeurs de démo ?");
+    const confirmed = window.confirm(
+      "Réinitialiser toutes les données locales avec les valeurs de démo ?",
+    );
     if (confirmed) {
       resetDemoData();
     }
@@ -50,18 +54,20 @@ export function AppShell() {
       <header className="border-b border-amber-900/15 bg-parchment/80 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-xl font-semibold">L&apos;Anneau Unique - Carnet du MJ</h1>
-            <p className="text-xs text-amber-950/80">Application web locale - jalon 1</p>
+            <h1 className="text-xl font-semibold">
+              L&apos;Anneau Unique - Carnet du MJ
+            </h1>
+            <p className="text-xs text-amber-950/80">
+              Application web locale - jalon 1
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-amber-900/70">
-            {!isOnline && <span className="badge badge-hostile px-2 py-1">Hors ligne</span>}
+            {!isOnline && (
+              <span className="badge badge-hostile px-2 py-1">Hors ligne</span>
+            )}
             <span>{savedLabel}</span>
           </div>
-          <button
-            type="button"
-            onClick={onReset}
-            className="btn btn-subtle"
-          >
+          <button type="button" onClick={onReset} className="btn btn-subtle">
             Réinitialiser les données de démo
           </button>
         </div>
@@ -75,7 +81,10 @@ export function AppShell() {
           <NavLink to="/npcs" className={navLinkClass}>
             PNJ
           </NavLink>
-          <NavLink to={`/campaign/${data.campaign.id}/places`} className={navLinkClass}>
+          <NavLink
+            to={`/campaign/${data.campaign.id}/places`}
+            className={navLinkClass}
+          >
             Lieux
           </NavLink>
           <NavLink to="/search" className={navLinkClass}>
@@ -99,7 +108,10 @@ export function AppShell() {
             <NavLink to="/npcs" className={navLinkClass}>
               PNJ
             </NavLink>
-            <NavLink to={`/campaign/${data.campaign.id}/places`} className={navLinkClass}>
+            <NavLink
+              to={`/campaign/${data.campaign.id}/places`}
+              className={navLinkClass}
+            >
               Lieux
             </NavLink>
             <NavLink to="/search" className={navLinkClass}>

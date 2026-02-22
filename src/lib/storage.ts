@@ -36,6 +36,6 @@ export function createLocalStorageStore(key: string = STORAGE_KEY): DataStore {
       } catch (error) {
         console.error("Failed to clear localStorage", error);
       }
-    }
+    },
   };
 }

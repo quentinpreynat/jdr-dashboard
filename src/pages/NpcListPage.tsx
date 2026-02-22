@@ -22,7 +22,9 @@ export function NpcListPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-semibold">PNJ</h2>
-          <p className="text-sm text-amber-950/80">Suivez les alliés, mécènes et menaces notables.</p>
+          <p className="text-sm text-amber-950/80">
+            Suivez les alliés, mécènes et menaces notables.
+          </p>
         </div>
         <button
           type="button"
@@ -42,9 +44,15 @@ export function NpcListPage() {
             <Link to={`/npcs/${npc.id}`} className="card card-compact block">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-semibold">{npc.name || "PNJ sans nom"}</h3>
-                  <p className="text-sm text-amber-950/80">{npc.role || "Aucun rôle défini."}</p>
-                  <p className="text-xs text-amber-900/70">Apparitions : {countAppearances(npc.id)}</p>
+                  <h3 className="text-lg font-semibold">
+                    {npc.name || "PNJ sans nom"}
+                  </h3>
+                  <p className="text-sm text-amber-950/80">
+                    {npc.role || "Aucun rôle défini."}
+                  </p>
+                  <p className="text-xs text-amber-900/70">
+                    Apparitions : {countAppearances(npc.id)}
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <button

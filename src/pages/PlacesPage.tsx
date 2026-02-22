@@ -7,15 +7,20 @@ export function PlacesPage() {
   const location = useLocation();
   const { data, addPlace, updatePlace, removePlace } = useAppData();
   const isCampaignMatch = campaignId === data.campaign.id;
-  const places = isCampaignMatch ? data.campaign.places ?? [] : [];
-  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(places[0]?.id ?? null);
+  const places = isCampaignMatch ? (data.campaign.places ?? []) : [];
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(
+    places[0]?.id ?? null,
+  );
 
   useEffect(() => {
     if (!selectedPlaceId && places[0]) {
       setSelectedPlaceId(places[0].id);
       return;
     }
-    if (selectedPlaceId && !places.some((place) => place.id === selectedPlaceId)) {
+    if (
+      selectedPlaceId &&
+      !places.some((place) => place.id === selectedPlaceId)
+    ) {
       setSelectedPlaceId(places[0]?.id ?? null);
     }
   }, [places, selectedPlaceId]);
@@ -31,7 +36,7 @@ export function PlacesPage() {
   }, [location.search, places]);
 
   const selectedPlace = selectedPlaceId
-    ? places.find((place) => place.id === selectedPlaceId) ?? null
+    ? (places.find((place) => place.id === selectedPlaceId) ?? null)
     : null;
 
   const linkedScenes = useMemo(() => {
@@ -41,7 +46,7 @@ export function PlacesPage() {
     return data.sessions.flatMap((session) =>
       session.scenes
         .filter((scene) => scene.placeId === selectedPlaceId)
-        .map((scene) => ({ session, scene }))
+        .map((scene) => ({ session, scene })),
     );
   }, [data.sessions, selectedPlaceId]);
 
@@ -49,9 +54,13 @@ export function PlacesPage() {
     <section className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-amber-900/60">Campagne</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-amber-900/60">
+            Campagne
+          </p>
           <h2 className="text-2xl font-semibold">Lieux</h2>
-          <p className="text-sm text-amber-950/70">Référentiel des lieux de la campagne.</p>
+          <p className="text-sm text-amber-950/70">
+            Référentiel des lieux de la campagne.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link to="/" className="btn btn-subtle">
@@ -66,7 +75,7 @@ export function PlacesPage() {
               const placeId = addPlace(campaignId, {
                 name: "Nouveau lieu",
                 region: "",
-                description: ""
+                description: "",
               });
               if (placeId) {
                 setSelectedPlaceId(placeId);
@@ -102,7 +111,9 @@ export function PlacesPage() {
                 }`}
               >
                 <p className="font-medium">{place.name || "Lieu sans nom"}</p>
-                {place.region && <p className="text-xs text-amber-900/70">{place.region}</p>}
+                {place.region && (
+                  <p className="text-xs text-amber-900/70">{place.region}</p>
+                )}
               </button>
             ))}
             {places.length === 0 && (
@@ -147,7 +158,9 @@ export function PlacesPage() {
                       value={selectedPlace.name}
                       onChange={(event) =>
                         campaignId
-                          ? updatePlace(campaignId, selectedPlace.id, { name: event.target.value })
+                          ? updatePlace(campaignId, selectedPlace.id, {
+                              name: event.target.value,
+                            })
                           : undefined
                       }
                       className="rounded-md border border-amber-900/20 px-3 py-2"
@@ -159,7 +172,9 @@ export function PlacesPage() {
                       value={selectedPlace.region ?? ""}
                       onChange={(event) =>
                         campaignId
-                          ? updatePlace(campaignId, selectedPlace.id, { region: event.target.value })
+                          ? updatePlace(campaignId, selectedPlace.id, {
+                              region: event.target.value,
+                            })
                           : undefined
                       }
                       className="rounded-md border border-amber-900/20 px-3 py-2"
@@ -173,7 +188,9 @@ export function PlacesPage() {
                     value={selectedPlace.description ?? ""}
                     onChange={(event) =>
                       campaignId
-                        ? updatePlace(campaignId, selectedPlace.id, { description: event.target.value })
+                        ? updatePlace(campaignId, selectedPlace.id, {
+                            description: event.target.value,
+                          })
                         : undefined
                     }
                     className="rounded-md border border-amber-900/20 px-3 py-2"
@@ -190,8 +207,12 @@ export function PlacesPage() {
                       to={`/sessions/${session.id}?scene=${scene.id}`}
                       className="block rounded-md border border-amber-900/20 bg-white/70 px-3 py-2 text-sm hover:bg-amber-50"
                     >
-                      <p className="font-medium">{scene.title || `Scène ${scene.order}`}</p>
-                      <p className="text-xs text-amber-900/70">{session.title || "Session sans titre"}</p>
+                      <p className="font-medium">
+                        {scene.title || `Scène ${scene.order}`}
+                      </p>
+                      <p className="text-xs text-amber-900/70">
+                        {session.title || "Session sans titre"}
+                      </p>
                     </Link>
                   ))}
                   {linkedScenes.length === 0 && (

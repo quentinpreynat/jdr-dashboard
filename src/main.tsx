@@ -13,7 +13,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <App />
       </AppDataProvider>
     </HashRouter>
-  </React.StrictMode>
+  </React.StrictMode>,
 );
 
 if (import.meta.env.PROD) {

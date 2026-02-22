@@ -7,7 +7,10 @@ export function SessionsListPage() {
 
   const formatUpdatedAt = (value: string): string => {
     const date = new Date(value);
-    return date.toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" });
+    return date.toLocaleString("fr-FR", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
   };
 
   const countLinkedNpcs = (sessionId: string): number => {
@@ -25,7 +28,9 @@ export function SessionsListPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-semibold">Sessions</h2>
-          <p className="text-sm text-amber-950/80">Créez et gérez les sessions de jeu.</p>
+          <p className="text-sm text-amber-950/80">
+            Créez et gérez les sessions de jeu.
+          </p>
         </div>
         <button
           type="button"
@@ -42,10 +47,15 @@ export function SessionsListPage() {
       <ul className="space-y-3">
         {data.sessions.map((session) => (
           <li key={session.id}>
-            <Link to={`/sessions/${session.id}`} className="card card-compact block">
+            <Link
+              to={`/sessions/${session.id}`}
+              className="card card-compact block"
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-semibold">{session.title || "Session sans titre"}</h3>
+                  <h3 className="text-lg font-semibold">
+                    {session.title || "Session sans titre"}
+                  </h3>
                   <p className="text-sm text-amber-950/80">
                     {session.objective || "Aucun objectif pour le moment."}
                   </p>
@@ -62,7 +72,9 @@ export function SessionsListPage() {
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
-                      const confirmed = window.confirm("Supprimer cette session ?");
+                      const confirmed = window.confirm(
+                        "Supprimer cette session ?",
+                      );
                       if (confirmed) {
                         deleteSession(session.id);
                       }

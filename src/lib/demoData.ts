@@ -12,17 +12,17 @@ export const DEMO_DATA: AppData = {
         id: "place_1",
         name: "Auberge Abandonnée",
         region: "Grande Route",
-        description: "Relais fatigué aux portes de la lande."
+        description: "Relais fatigué aux portes de la lande.",
       },
       {
         id: "place_2",
         name: "Vieille tour",
         region: "Vallon brumeux",
-        description: "Tour isolée dont la pierre suinte d'humidité."
-      }
+        description: "Tour isolée dont la pierre suinte d'humidité.",
+      },
     ],
     createdAt: "2026-02-01T10:00:00.000Z",
-    updatedAt: "2026-02-10T18:30:00.000Z"
+    updatedAt: "2026-02-10T18:30:00.000Z",
   },
   sessions: [
     {
@@ -37,25 +37,26 @@ export const DEMO_DATA: AppData = {
           text: "L'auberge est bondée, boueuse et tendue après le coucher du soleil.",
           order: 1,
           linkedNpcIds: [],
-          placeId: "place_1"
+          placeId: "place_1",
         },
         {
           id: "scene_2",
           title: "Une carte déchirée",
           text: "Un colporteur ivre vend une carte avec un cercle marqué.",
           order: 2,
-          linkedNpcIds: []
-        }
+          linkedNpcIds: [],
+        },
       ],
       inTimeline: true,
       timelineOrder: 1,
       createdAt: "2026-02-02T17:00:00.000Z",
-      updatedAt: "2026-02-12T09:15:00.000Z"
+      updatedAt: "2026-02-12T09:15:00.000Z",
     },
     {
       id: "session_2",
       title: "Les Feux de la Tour",
-      objective: "Identifier la source des lueurs nocturnes près de la vieille tour.",
+      objective:
+        "Identifier la source des lueurs nocturnes près de la vieille tour.",
       notes: "Introduire un guide local réticent mais bien informé.",
       scenes: [
         {
@@ -63,7 +64,7 @@ export const DEMO_DATA: AppData = {
           title: "Piste dans la brume",
           text: "Des traces fraîches traversent un vallon noyé de brouillard.",
           order: 1,
-          linkedNpcIds: []
+          linkedNpcIds: [],
         },
         {
           id: "scene_4",
@@ -71,14 +72,14 @@ export const DEMO_DATA: AppData = {
           text: "La pierre suinte d'humidité et un feu froid palpite au sommet.",
           order: 2,
           linkedNpcIds: [],
-          placeId: "place_2"
-        }
+          placeId: "place_2",
+        },
       ],
       inTimeline: true,
       timelineOrder: 2,
       createdAt: "2026-02-05T14:20:00.000Z",
-      updatedAt: "2026-02-14T20:05:00.000Z"
-    }
+      updatedAt: "2026-02-14T20:05:00.000Z",
+    },
   ],
   npcs: [
     {
@@ -90,7 +91,7 @@ export const DEMO_DATA: AppData = {
       notes: "Cache une lettre du dernier garde de la caravane.",
       attitude: "neutral",
       createdAt: "2026-02-01T09:10:00.000Z",
-      updatedAt: "2026-02-11T08:45:00.000Z"
+      updatedAt: "2026-02-11T08:45:00.000Z",
     },
     {
       id: "npc_2",
@@ -101,7 +102,7 @@ export const DEMO_DATA: AppData = {
       notes: "Sait interpréter les signes laissés par les Wargs.",
       attitude: "wary",
       createdAt: "2026-02-03T12:00:00.000Z",
-      updatedAt: "2026-02-13T16:20:00.000Z"
+      updatedAt: "2026-02-13T16:20:00.000Z",
     },
     {
       id: "npc_3",
@@ -112,8 +113,8 @@ export const DEMO_DATA: AppData = {
       notes: "A perdu une cargaison entière il y a une semaine.",
       attitude: "friendly",
       createdAt: "2026-02-04T18:30:00.000Z",
-      updatedAt: "2026-02-14T11:40:00.000Z"
-    }
+      updatedAt: "2026-02-14T11:40:00.000Z",
+    },
   ],
   pcs: [
     {
@@ -125,7 +126,7 @@ export const DEMO_DATA: AppData = {
       stats: { for: 11, dex: 16, int: 12, con: 13 },
       conditions: ["Fatigué"],
       createdAt: "2026-02-06T09:00:00.000Z",
-      updatedAt: "2026-02-15T19:10:00.000Z"
+      updatedAt: "2026-02-15T19:10:00.000Z",
     },
     {
       id: "pc_2",
@@ -136,15 +137,11 @@ export const DEMO_DATA: AppData = {
       stats: { for: 15, dex: 12, int: 10, con: 14 },
       conditions: [],
       createdAt: "2026-02-06T09:05:00.000Z",
-      updatedAt: "2026-02-15T19:12:00.000Z"
-    }
-  ]
+      updatedAt: "2026-02-15T19:12:00.000Z",
+    },
+  ],
 };
 
 export function cloneDemoData(): AppData {
   return JSON.parse(JSON.stringify(DEMO_DATA)) as AppData;
 }
-
-
-
-

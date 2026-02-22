@@ -9,16 +9,19 @@ export function CampaignDashboardPage() {
       data.sessions
         .filter((session) => session.inTimeline)
         .sort((a, b) => a.timelineOrder - b.timelineOrder),
-    [data.sessions]
+    [data.sessions],
   );
 
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold">Tableau de bord de la campagne</h2>
+          <h2 className="text-2xl font-semibold">
+            Tableau de bord de la campagne
+          </h2>
           <p className="text-sm text-amber-950/80">
-            Modifiez l&apos;identité de la campagne et suivez les points clés de la chronologie.
+            Modifiez l&apos;identité de la campagne et suivez les points clés de
+            la chronologie.
           </p>
         </div>
       </div>
@@ -57,10 +60,17 @@ export function CampaignDashboardPage() {
 
         <ul className="space-y-2">
           {orderedItems.map((session, index) => (
-            <li key={session.id} className="card card-compact flex items-center gap-2">
-              <span className="w-8 text-center text-sm text-amber-950/70">{session.timelineOrder}</span>
+            <li
+              key={session.id}
+              className="card card-compact flex items-center gap-2"
+            >
+              <span className="w-8 text-center text-sm text-amber-950/70">
+                {session.timelineOrder}
+              </span>
               <div className="flex-1">
-                <p className="text-sm font-medium">{session.title || "Session sans titre"}</p>
+                <p className="text-sm font-medium">
+                  {session.title || "Session sans titre"}
+                </p>
                 <p className="text-xs text-amber-950/70">
                   {session.objective || "Aucun objectif pour le moment."}
                 </p>

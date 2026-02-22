@@ -43,11 +43,15 @@ export async function migrateIfNeeded(): Promise<void> {
     const candidate = wrapper?.data ?? parsed;
 
     if (isAppDataLike(candidate) && candidate.campaign) {
-      await putCampaign(candidate.campaign as Parameters<typeof putCampaign>[0]);
+      await putCampaign(
+        candidate.campaign as Parameters<typeof putCampaign>[0],
+      );
     } else {
       const directCampaign = (parsed as AppDataLike).campaign;
       if (directCampaign) {
-        await db.campaigns.put(directCampaign as Parameters<typeof putCampaign>[0]);
+        await db.campaigns.put(
+          directCampaign as Parameters<typeof putCampaign>[0],
+        );
       }
     }
 

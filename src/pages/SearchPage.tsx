@@ -20,7 +20,11 @@ function normalizeText(value: string): string {
     .toLowerCase();
 }
 
-function makeSnippet(value: string, query: string, maxLength: number = 120): string | undefined {
+function makeSnippet(
+  value: string,
+  query: string,
+  maxLength: number = 120,
+): string | undefined {
   if (!value) {
     return undefined;
   }
@@ -57,7 +61,7 @@ export function SearchPage() {
           npc.role,
           npc.locationText,
           npc.description,
-          npc.notes
+          npc.notes,
         ]
           .filter(Boolean)
           .join(" ");
@@ -72,12 +76,14 @@ export function SearchPage() {
           makeSnippet(npc.description, trimmed) ??
           makeSnippet(npc.notes, trimmed) ??
           makeSnippet(npc.locationText, trimmed),
-        href: `/npcs/${npc.id}`
+        href: `/npcs/${npc.id}`,
       }));
 
     const sessionResults: SearchResult[] = data.sessions
       .filter((session) => {
-        const haystack = [session.title, session.objective, session.notes].filter(Boolean).join(" ");
+        const haystack = [session.title, session.objective, session.notes]
+          .filter(Boolean)
+          .join(" ");
         return normalizeText(haystack).includes(normalizedQuery);
       })
       .map((session) => ({
@@ -85,8 +91,10 @@ export function SearchPage() {
         type: "session",
         title: session.title || "Session sans titre",
         subtitle: session.objective || "Aucun objectif",
-        snippet: makeSnippet(session.notes, trimmed) ?? makeSnippet(session.objective, trimmed),
-        href: `/sessions/${session.id}`
+        snippet:
+          makeSnippet(session.notes, trimmed) ??
+          makeSnippet(session.objective, trimmed),
+        href: `/sessions/${session.id}`,
       }));
 
     const sceneResults: SearchResult[] = data.sessions.flatMap((session) =>
@@ -101,29 +109,40 @@ export function SearchPage() {
           title: scene.title || `Scène ${scene.order}`,
           subtitle: session.title || "Session sans titre",
           snippet: makeSnippet(scene.text, trimmed),
-          href: `/sessions/${session.id}?scene=${scene.id}`
-        }))
+          href: `/sessions/${session.id}?scene=${scene.id}`,
+        })),
     );
 
     const placeResults: SearchResult[] = (data.campaign.places ?? [])
       .filter((place) => {
-        const haystack = [place.name, place.region, place.description].filter(Boolean).join(" ");
+        const haystack = [place.name, place.region, place.description]
+          .filter(Boolean)
+          .join(" ");
         return normalizeText(haystack).includes(normalizedQuery);
       })
       .map((place) => {
         const usageCount = data.sessions.reduce((count, session) => {
-          return count + session.scenes.filter((scene) => scene.placeId === place.id).length;
+          return (
+            count +
+            session.scenes.filter((scene) => scene.placeId === place.id).length
+          );
         }, 0);
         const snippet =
-          makeSnippet(place.description ?? "", trimmed) ?? makeSnippet(place.region ?? "", trimmed);
-        const usageLabel = usageCount > 0 ? `Utilisé dans ${usageCount} scène${usageCount > 1 ? "s" : ""}` : "Aucune scène";
+          makeSnippet(place.description ?? "", trimmed) ??
+          makeSnippet(place.region ?? "", trimmed);
+        const usageLabel =
+          usageCount > 0
+            ? `Utilisé dans ${usageCount} scène${usageCount > 1 ? "s" : ""}`
+            : "Aucune scène";
         return {
           id: place.id,
           type: "place",
           title: place.name || "Lieu sans nom",
-          subtitle: place.region ? `${place.region} • ${usageLabel}` : usageLabel,
+          subtitle: place.region
+            ? `${place.region} • ${usageLabel}`
+            : usageLabel,
           snippet,
-          href: `/campaign/${data.campaign.id}/places?place=${place.id}`
+          href: `/campaign/${data.campaign.id}/places?place=${place.id}`,
         };
       });
 
@@ -131,7 +150,12 @@ export function SearchPage() {
   }, [data, query]);
 
   const grouped = useMemo(() => {
-    const groups: Record<ResultType, SearchResult[]> = { npc: [], session: [], scene: [], place: [] };
+    const groups: Record<ResultType, SearchResult[]> = {
+      npc: [],
+      session: [],
+      scene: [],
+      place: [],
+    };
     for (const result of results) {
       groups[result.type].push(result);
     }
@@ -159,7 +183,9 @@ export function SearchPage() {
       </div>
 
       {query.trim() === "" && (
-        <p className="text-sm text-amber-950/70">Saisissez une recherche pour afficher les résultats.</p>
+        <p className="text-sm text-amber-950/70">
+          Saisissez une recherche pour afficher les résultats.
+        </p>
       )}
 
       {query.trim() !== "" && results.length === 0 && (
@@ -174,8 +200,16 @@ export function SearchPage() {
               <li key={result.id} className="card card-compact">
                 <Link to={result.href} className="block">
                   <p className="font-medium">{result.title}</p>
-                  {result.subtitle && <p className="text-xs text-amber-900/70">{result.subtitle}</p>}
-                  {result.snippet && <p className="mt-1 text-sm text-amber-950/80">{result.snippet}</p>}
+                  {result.subtitle && (
+                    <p className="text-xs text-amber-900/70">
+                      {result.subtitle}
+                    </p>
+                  )}
+                  {result.snippet && (
+                    <p className="mt-1 text-sm text-amber-950/80">
+                      {result.snippet}
+                    </p>
+                  )}
                 </Link>
               </li>
             ))}
@@ -191,8 +225,16 @@ export function SearchPage() {
               <li key={result.id} className="card card-compact">
                 <Link to={result.href} className="block">
                   <p className="font-medium">{result.title}</p>
-                  {result.subtitle && <p className="text-xs text-amber-900/70">{result.subtitle}</p>}
-                  {result.snippet && <p className="mt-1 text-sm text-amber-950/80">{result.snippet}</p>}
+                  {result.subtitle && (
+                    <p className="text-xs text-amber-900/70">
+                      {result.subtitle}
+                    </p>
+                  )}
+                  {result.snippet && (
+                    <p className="mt-1 text-sm text-amber-950/80">
+                      {result.snippet}
+                    </p>
+                  )}
                 </Link>
               </li>
             ))}
@@ -208,8 +250,16 @@ export function SearchPage() {
               <li key={result.id} className="card card-compact">
                 <Link to={result.href} className="block">
                   <p className="font-medium">{result.title}</p>
-                  {result.subtitle && <p className="text-xs text-amber-900/70">{result.subtitle}</p>}
-                  {result.snippet && <p className="mt-1 text-sm text-amber-950/80">{result.snippet}</p>}
+                  {result.subtitle && (
+                    <p className="text-xs text-amber-900/70">
+                      {result.subtitle}
+                    </p>
+                  )}
+                  {result.snippet && (
+                    <p className="mt-1 text-sm text-amber-950/80">
+                      {result.snippet}
+                    </p>
+                  )}
                 </Link>
               </li>
             ))}
@@ -225,8 +275,16 @@ export function SearchPage() {
               <li key={result.id} className="card card-compact">
                 <Link to={result.href} className="block">
                   <p className="font-medium">{result.title}</p>
-                  {result.subtitle && <p className="text-xs text-amber-900/70">{result.subtitle}</p>}
-                  {result.snippet && <p className="mt-1 text-sm text-amber-950/80">{result.snippet}</p>}
+                  {result.subtitle && (
+                    <p className="text-xs text-amber-900/70">
+                      {result.subtitle}
+                    </p>
+                  )}
+                  {result.snippet && (
+                    <p className="mt-1 text-sm text-amber-950/80">
+                      {result.snippet}
+                    </p>
+                  )}
                 </Link>
               </li>
             ))}

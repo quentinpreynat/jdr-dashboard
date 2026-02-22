@@ -1,47 +1,88 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { cloneDemoData } from "../lib/demoData";
 import { addSnapshot, db, pruneSnapshots } from "../lib/db";
 import { createId } from "../lib/id";
 import { migrateIfNeeded } from "../lib/migrateFromLocalStorage";
 import { createLocalStorageStore } from "../lib/storage";
-import type { AppData, Campaign, Npc, Place, PlayerCharacter, Scene, Session } from "../models";
+import type {
+  AppData,
+  Campaign,
+  Npc,
+  Place,
+  PlayerCharacter,
+  Scene,
+  Session,
+} from "../models";
 
 interface AppDataContextValue {
   data: AppData;
   lastSavedAt: string | null;
   updateCampaign(fields: Partial<Omit<Campaign, "id">>): void;
   addPlace(campaignId: string, place: Omit<Place, "id">): string;
-  updatePlace(campaignId: string, placeId: string, fields: Partial<Omit<Place, "id">>): void;
+  updatePlace(
+    campaignId: string,
+    placeId: string,
+    fields: Partial<Omit<Place, "id">>,
+  ): void;
   removePlace(campaignId: string, placeId: string): void;
   findCampaignBySessionId(sessionId: string): Campaign | null;
   moveSessionTimeline(sessionId: string, direction: "up" | "down"): void;
   createSession(): string;
   deleteSession(sessionId: string): void;
-  updateSession(sessionId: string, fields: Partial<Omit<Session, "id" | "scenes">>): void;
+  updateSession(
+    sessionId: string,
+    fields: Partial<Omit<Session, "id" | "scenes">>,
+  ): void;
   addScene(sessionId: string): void;
-  updateScene(sessionId: string, sceneId: string, fields: Partial<Omit<Scene, "id" | "order">>): void;
-  addSceneLiveNote(sessionId: string, targetSceneId: string, text: string, createdFromSceneId?: string): void;
+  updateScene(
+    sessionId: string,
+    sceneId: string,
+    fields: Partial<Omit<Scene, "id" | "order">>,
+  ): void;
+  addSceneLiveNote(
+    sessionId: string,
+    targetSceneId: string,
+    text: string,
+    createdFromSceneId?: string,
+  ): void;
   removeSceneLiveNote(sessionId: string, sceneId: string, noteId: string): void;
   addSceneChoice(
     sessionId: string,
     sceneId: string,
-    choice: { label: string; targetType: "place" | "npc"; targetId: string }
+    choice: { label: string; targetType: "place" | "npc"; targetId: string },
   ): void;
   removeSceneChoice(sessionId: string, sceneId: string, choiceId: string): void;
   deleteScene(sessionId: string, sceneId: string): void;
   moveScene(sessionId: string, sceneId: string, direction: "up" | "down"): void;
-  setSceneNpcLink(sessionId: string, sceneId: string, npcId: string, linked: boolean): void;
+  setSceneNpcLink(
+    sessionId: string,
+    sceneId: string,
+    npcId: string,
+    linked: boolean,
+  ): void;
   createNpc(): string;
   deleteNpc(npcId: string): void;
   updateNpc(npcId: string, fields: Partial<Omit<Npc, "id">>): void;
   createPlayerCharacter(): string;
   deletePlayerCharacter(pcId: string): void;
-  updatePlayerCharacter(pcId: string, fields: Partial<Omit<PlayerCharacter, "id">>): void;
+  updatePlayerCharacter(
+    pcId: string,
+    fields: Partial<Omit<PlayerCharacter, "id">>,
+  ): void;
   resetDemoData(): void;
   replaceData(raw: unknown): { ok: boolean; error?: string };
 }
 
-const AppDataContext = createContext<AppDataContextValue | undefined>(undefined);
+const AppDataContext = createContext<AppDataContextValue | undefined>(
+  undefined,
+);
 const store = createLocalStorageStore();
 
 function moveToSequentialOrder<T extends { order: number }>(items: T[]): T[] {
@@ -71,7 +112,7 @@ function ensureCampaignTimestamps(campaign: Campaign): Campaign {
     ...campaign,
     places: campaign.places ?? [],
     createdAt: ensureTimestamp(campaign.createdAt, fallback),
-    updatedAt: ensureTimestamp(campaign.updatedAt, fallback)
+    updatedAt: ensureTimestamp(campaign.updatedAt, fallback),
   };
 }
 
@@ -86,13 +127,16 @@ function ensureSessionTimestamps(session: Session): Session {
       choices: scene.choices ?? [],
       liveNotes: (scene.liveNotes ?? []).map((note) => ({
         ...note,
-        createdAt: typeof note.createdAt === "number" ? note.createdAt : Date.parse(String(note.createdAt))
-      }))
+        createdAt:
+          typeof note.createdAt === "number"
+            ? note.createdAt
+            : Date.parse(String(note.createdAt)),
+      })),
     })),
     inTimeline: session.inTimeline ?? true,
     timelineOrder: session.timelineOrder ?? 0,
     createdAt: ensureTimestamp(session.createdAt, fallback),
-    updatedAt: ensureTimestamp(session.updatedAt, fallback)
+    updatedAt: ensureTimestamp(session.updatedAt, fallback),
   };
 }
 
@@ -102,7 +146,7 @@ function ensureNpcTimestamps(npc: Npc): Npc {
     ...npc,
     attitude: npc.attitude ?? "neutral",
     createdAt: ensureTimestamp(npc.createdAt, fallback),
-    updatedAt: ensureTimestamp(npc.updatedAt, fallback)
+    updatedAt: ensureTimestamp(npc.updatedAt, fallback),
   };
 }
 
@@ -116,27 +160,31 @@ function ensurePlayerCharacter(pc: PlayerCharacter): PlayerCharacter {
     stats: pc.stats ?? { for: 0, dex: 0, int: 0, con: 0 },
     conditions: pc.conditions ?? [],
     createdAt: ensureTimestamp(pc.createdAt, fallback),
-    updatedAt: ensureTimestamp(pc.updatedAt, fallback)
+    updatedAt: ensureTimestamp(pc.updatedAt, fallback),
   };
 }
 
 function ensureAppData(data: AppData): AppData {
-  const { timelineItems: _legacyTimelineItems, ...campaign } = data.campaign as Campaign & {
-    timelineItems?: unknown;
-  };
+  const { timelineItems: _legacyTimelineItems, ...campaign } =
+    data.campaign as Campaign & {
+      timelineItems?: unknown;
+    };
   const normalized = {
     ...data,
     campaign: ensureCampaignTimestamps(campaign),
     sessions: data.sessions.map(ensureSessionTimestamps),
     npcs: data.npcs.map(ensureNpcTimestamps),
-    pcs: (data.pcs ?? []).map(ensurePlayerCharacter)
+    pcs: (data.pcs ?? []).map(ensurePlayerCharacter),
   };
   const withTimeline = {
     ...normalized,
     sessions: normalized.sessions.map((session, index) => ({
       ...session,
-      timelineOrder: session.timelineOrder && session.timelineOrder > 0 ? session.timelineOrder : index + 1
-    }))
+      timelineOrder:
+        session.timelineOrder && session.timelineOrder > 0
+          ? session.timelineOrder
+          : index + 1,
+    })),
   };
   return withTimeline;
 }
@@ -146,10 +194,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+  return (
+    Array.isArray(value) && value.every((entry) => typeof entry === "string")
+  );
 }
 
-function isLiveNote(value: unknown): value is { id: string; text: string; createdAt: number; createdFromSceneId?: string } {
+function isLiveNote(
+  value: unknown,
+): value is {
+  id: string;
+  text: string;
+  createdAt: number;
+  createdFromSceneId?: string;
+} {
   if (!isRecord(value)) {
     return false;
   }
@@ -157,13 +214,19 @@ function isLiveNote(value: unknown): value is { id: string; text: string; create
     typeof value.id === "string" &&
     typeof value.text === "string" &&
     typeof value.createdAt === "number" &&
-    (value.createdFromSceneId === undefined || typeof value.createdFromSceneId === "string")
+    (value.createdFromSceneId === undefined ||
+      typeof value.createdFromSceneId === "string")
   );
 }
 
 function isSceneChoice(
-  value: unknown
-): value is { id: string; label: string; targetType: "place" | "npc"; targetId: string } {
+  value: unknown,
+): value is {
+  id: string;
+  label: string;
+  targetType: "place" | "npc";
+  targetId: string;
+} {
   if (!isRecord(value)) {
     return false;
   }
@@ -194,8 +257,10 @@ function isScene(value: unknown): value is Scene {
     (linkedNpcIds === undefined || isStringArray(linkedNpcIds)) &&
     (placeId === undefined || typeof placeId === "string") &&
     (value.done === undefined || typeof value.done === "boolean") &&
-    (liveNotes === undefined || (Array.isArray(liveNotes) && liveNotes.every(isLiveNote))) &&
-    (choices === undefined || (Array.isArray(choices) && choices.every(isSceneChoice)))
+    (liveNotes === undefined ||
+      (Array.isArray(liveNotes) && liveNotes.every(isLiveNote))) &&
+    (choices === undefined ||
+      (Array.isArray(choices) && choices.every(isSceneChoice)))
   );
 }
 
@@ -223,7 +288,10 @@ function isNpc(value: unknown): value is Npc {
   }
   const attitude = value.attitude;
   const validAttitude =
-    attitude === "friendly" || attitude === "neutral" || attitude === "wary" || attitude === "hostile";
+    attitude === "friendly" ||
+    attitude === "neutral" ||
+    attitude === "wary" ||
+    attitude === "hostile";
   return (
     typeof value.id === "string" &&
     typeof value.name === "string" &&
@@ -237,7 +305,9 @@ function isNpc(value: unknown): value is Npc {
   );
 }
 
-function isPlayerStats(value: unknown): value is { for: number; dex: number; int: number; con: number } {
+function isPlayerStats(
+  value: unknown,
+): value is { for: number; dex: number; int: number; con: number } {
   if (!isRecord(value)) {
     return false;
   }
@@ -288,7 +358,8 @@ function isCampaign(value: unknown): value is Campaign {
     typeof value.title === "string" &&
     typeof value.summary === "string" &&
     typeof value.tone === "string" &&
-    (value.places === undefined || (Array.isArray(value.places) && value.places.every(isPlace)))
+    (value.places === undefined ||
+      (Array.isArray(value.places) && value.places.every(isPlace)))
   );
 }
 
@@ -310,7 +381,7 @@ function isAppData(value: unknown): value is AppData {
 function swapOrderedItem<T extends { order: number; id: string }>(
   items: T[],
   itemId: string,
-  direction: "up" | "down"
+  direction: "up" | "down",
 ): T[] {
   const ordered = [...items].sort((a, b) => a.order - b.order);
   const index = ordered.findIndex((item) => item.id === itemId);
@@ -374,14 +445,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const timestamp = nowIso();
         setData((prev) => ({
           ...prev,
-          campaign: { ...prev.campaign, ...fields, updatedAt: timestamp }
+          campaign: { ...prev.campaign, ...fields, updatedAt: timestamp },
         }));
       },
       findCampaignBySessionId(sessionId) {
         if (!sessionId) {
           return null;
         }
-        const hasSession = data.sessions.some((session) => session.id === sessionId);
+        const hasSession = data.sessions.some(
+          (session) => session.id === sessionId,
+        );
         return hasSession ? data.campaign : null;
       },
       addPlace(campaignId, place) {
@@ -400,11 +473,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                 id: placeId,
                 name: place.name,
                 region: place.region ?? "",
-                description: place.description ?? ""
-              }
+                description: place.description ?? "",
+              },
             ],
-            updatedAt: timestamp
-          }
+            updatedAt: timestamp,
+          },
         }));
         return placeId;
       },
@@ -418,10 +491,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           campaign: {
             ...prev.campaign,
             places: (prev.campaign.places ?? []).map((place) =>
-              place.id === placeId ? { ...place, ...fields } : place
+              place.id === placeId ? { ...place, ...fields } : place,
             ),
-            updatedAt: timestamp
-          }
+            updatedAt: timestamp,
+          },
         }));
       },
       removePlace(campaignId, placeId) {
@@ -433,22 +506,28 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           ...prev,
           campaign: {
             ...prev.campaign,
-            places: (prev.campaign.places ?? []).filter((place) => place.id !== placeId),
-            updatedAt: timestamp
+            places: (prev.campaign.places ?? []).filter(
+              (place) => place.id !== placeId,
+            ),
+            updatedAt: timestamp,
           },
           sessions: prev.sessions.map((session) => {
-            const hasSceneLink = session.scenes.some((scene) => scene.placeId === placeId);
+            const hasSceneLink = session.scenes.some(
+              (scene) => scene.placeId === placeId,
+            );
             if (!hasSceneLink) {
               return session;
             }
             return {
               ...session,
               scenes: session.scenes.map((scene) =>
-                scene.placeId === placeId ? { ...scene, placeId: undefined } : scene
+                scene.placeId === placeId
+                  ? { ...scene, placeId: undefined }
+                  : scene,
               ),
-              updatedAt: timestamp
+              updatedAt: timestamp,
             };
-          })
+          }),
         }));
       },
       createSession() {
@@ -465,18 +544,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               notes: "",
               scenes: [],
               inTimeline: true,
-              timelineOrder: prev.sessions.filter((session) => session.inTimeline).length + 1,
+              timelineOrder:
+                prev.sessions.filter((session) => session.inTimeline).length +
+                1,
               createdAt: timestamp,
-              updatedAt: timestamp
-            }
-          ]
+              updatedAt: timestamp,
+            },
+          ],
         }));
         return sessionId;
       },
       deleteSession(sessionId) {
         setData((prev) => ({
           ...prev,
-          sessions: prev.sessions.filter((session) => session.id !== sessionId)
+          sessions: prev.sessions.filter((session) => session.id !== sessionId),
         }));
       },
       updateSession(sessionId, fields) {
@@ -484,8 +565,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setData((prev) => ({
           ...prev,
           sessions: prev.sessions.map((session) =>
-            session.id === sessionId ? { ...session, ...fields, updatedAt: timestamp } : session
-          )
+            session.id === sessionId
+              ? { ...session, ...fields, updatedAt: timestamp }
+              : session,
+          ),
         }));
       },
       addScene(sessionId) {
@@ -507,12 +590,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                   title: `Scène ${nextOrder}`,
                   text: "",
                   order: nextOrder,
-                  linkedNpcIds: []
-                }
+                  linkedNpcIds: [],
+                },
               ],
-              updatedAt: timestamp
+              updatedAt: timestamp,
             };
-          })
+          }),
         }));
       },
       updateScene(sessionId, sceneId, fields) {
@@ -527,11 +610,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             return {
               ...session,
               scenes: session.scenes.map((scene) =>
-                scene.id === sceneId ? { ...scene, ...fields } : scene
+                scene.id === sceneId ? { ...scene, ...fields } : scene,
               ),
-              updatedAt: timestamp
+              updatedAt: timestamp,
             };
-          })
+          }),
         }));
       },
       addSceneLiveNote(sessionId, targetSceneId, text, createdFromSceneId) {
@@ -561,14 +644,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                     id: createId("note"),
                     text: trimmedText,
                     createdAt: timestampMs,
-                    createdFromSceneId
-                  }
+                    createdFromSceneId,
+                  },
                 ];
                 return { ...scene, liveNotes: nextNotes };
               }),
-              updatedAt: timestamp
+              updatedAt: timestamp,
             };
-          })
+          }),
         }));
       },
       removeSceneLiveNote(sessionId, sceneId, noteId) {
@@ -589,12 +672,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
                 return {
                   ...scene,
-                  liveNotes: (scene.liveNotes ?? []).filter((note) => note.id !== noteId)
+                  liveNotes: (scene.liveNotes ?? []).filter(
+                    (note) => note.id !== noteId,
+                  ),
                 };
               }),
-              updatedAt: timestamp
+              updatedAt: timestamp,
             };
-          })
+          }),
         }));
       },
       addSceneChoice(sessionId, sceneId, choice) {
@@ -626,14 +711,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                     id: choiceId,
                     label: trimmedLabel,
                     targetType: choice.targetType,
-                    targetId: choice.targetId
-                  }
+                    targetId: choice.targetId,
+                  },
                 ];
                 return { ...scene, choices: nextChoices };
               }),
-              updatedAt: timestamp
+              updatedAt: timestamp,
             };
-          })
+          }),
         }));
       },
       removeSceneChoice(sessionId, sceneId, choiceId) {
@@ -653,12 +738,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                 }
                 return {
                   ...scene,
-                  choices: (scene.choices ?? []).filter((choice) => choice.id !== choiceId)
+                  choices: (scene.choices ?? []).filter(
+                    (choice) => choice.id !== choiceId,
+                  ),
                 };
               }),
-              updatedAt: timestamp
+              updatedAt: timestamp,
             };
-          })
+          }),
         }));
       },
       deleteScene(sessionId, sceneId) {
@@ -672,10 +759,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
             return {
               ...session,
-              scenes: moveToSequentialOrder(session.scenes.filter((scene) => scene.id !== sceneId)),
-              updatedAt: timestamp
+              scenes: moveToSequentialOrder(
+                session.scenes.filter((scene) => scene.id !== sceneId),
+              ),
+              updatedAt: timestamp,
             };
-          })
+          }),
         }));
       },
       moveScene(sessionId, sceneId, direction) {
@@ -690,9 +779,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             return {
               ...session,
               scenes: swapOrderedItem(session.scenes, sceneId, direction),
-              updatedAt: timestamp
+              updatedAt: timestamp,
             };
-          })
+          }),
         }));
       },
       createNpc() {
@@ -711,9 +800,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               notes: "",
               attitude: "neutral",
               createdAt: timestamp,
-              updatedAt: timestamp
-            }
-          ]
+              updatedAt: timestamp,
+            },
+          ],
         }));
         return npcId;
       },
@@ -723,7 +812,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           ...prev,
           npcs: prev.npcs.filter((npc) => npc.id !== npcId),
           sessions: prev.sessions.map((session) => {
-            const hasSceneLink = session.scenes.some((scene) => scene.linkedNpcIds.includes(npcId));
+            const hasSceneLink = session.scenes.some((scene) =>
+              scene.linkedNpcIds.includes(npcId),
+            );
             if (!hasSceneLink) {
               return session;
             }
@@ -731,11 +822,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               ...session,
               scenes: session.scenes.map((scene) => ({
                 ...scene,
-                linkedNpcIds: scene.linkedNpcIds.filter((id) => id !== npcId)
+                linkedNpcIds: scene.linkedNpcIds.filter((id) => id !== npcId),
               })),
-              updatedAt: timestamp
+              updatedAt: timestamp,
             };
-          })
+          }),
         }));
       },
       updateNpc(npcId, fields) {
@@ -743,8 +834,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setData((prev) => ({
           ...prev,
           npcs: prev.npcs.map((npc) =>
-            npc.id === npcId ? { ...npc, ...fields, updatedAt: timestamp } : npc
-          )
+            npc.id === npcId
+              ? { ...npc, ...fields, updatedAt: timestamp }
+              : npc,
+          ),
         }));
       },
       createPlayerCharacter() {
@@ -763,9 +856,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               stats: { for: 10, dex: 10, int: 10, con: 10 },
               conditions: [],
               createdAt: timestamp,
-              updatedAt: timestamp
-            }
-          ]
+              updatedAt: timestamp,
+            },
+          ],
         }));
         return pcId;
       },
@@ -776,8 +869,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           pcs: (prev.pcs ?? []).filter((pc) => pc.id !== pcId),
           sessions: prev.sessions.map((session) => ({
             ...session,
-            updatedAt: timestamp
-          }))
+            updatedAt: timestamp,
+          })),
         }));
       },
       updatePlayerCharacter(pcId, fields) {
@@ -785,8 +878,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setData((prev) => ({
           ...prev,
           pcs: (prev.pcs ?? []).map((pc) =>
-            pc.id === pcId ? { ...pc, ...fields, updatedAt: timestamp } : pc
-          )
+            pc.id === pcId ? { ...pc, ...fields, updatedAt: timestamp } : pc,
+          ),
         }));
       },
       moveSessionTimeline(sessionId, direction) {
@@ -795,7 +888,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           const timelineSessions = prev.sessions
             .filter((session) => session.inTimeline)
             .sort((a, b) => a.timelineOrder - b.timelineOrder);
-          const index = timelineSessions.findIndex((session) => session.id === sessionId);
+          const index = timelineSessions.findIndex(
+            (session) => session.id === sessionId,
+          );
           if (index === -1) {
             return prev;
           }
@@ -813,13 +908,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           const reordered = swapped.map((session, orderIndex) => ({
             ...session,
             timelineOrder: orderIndex + 1,
-            updatedAt: timestamp
+            updatedAt: timestamp,
           }));
 
-          const reorderMap = new Map(reordered.map((session) => [session.id, session]));
+          const reorderMap = new Map(
+            reordered.map((session) => [session.id, session]),
+          );
           return {
             ...prev,
-            sessions: prev.sessions.map((session) => reorderMap.get(session.id) ?? session)
+            sessions: prev.sessions.map(
+              (session) => reorderMap.get(session.id) ?? session,
+            ),
           };
         });
       },
@@ -844,9 +943,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                   : scene.linkedNpcIds.filter((id) => id !== npcId);
                 return { ...scene, linkedNpcIds: nextIds };
               }),
-              updatedAt: timestamp
+              updatedAt: timestamp,
             };
-          })
+          }),
         }));
       },
       resetDemoData() {
@@ -859,12 +958,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
         setData(ensureAppData(raw));
         return { ok: true };
-      }
+      },
     }),
-    [data, lastSavedAt]
+    [data, lastSavedAt],
   );
 
-  return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
+  return (
+    <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>
+  );
 }
 
 export function useAppData(): AppDataContextValue {
@@ -874,5 +975,3 @@ export function useAppData(): AppDataContextValue {
   }
   return context;
 }
-
-

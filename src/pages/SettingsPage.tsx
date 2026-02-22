@@ -25,7 +25,9 @@ export function SettingsPage() {
 
   const onExport = () => {
     const payload = JSON.stringify(data, null, 2);
-    const blob = new Blob([payload], { type: "application/json;charset=utf-8" });
+    const blob = new Blob([payload], {
+      type: "application/json;charset=utf-8",
+    });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -65,20 +67,19 @@ export function SettingsPage() {
     <section className="space-y-4">
       <div>
         <h2 className="text-2xl font-semibold">Paramètres</h2>
-        <p className="text-sm text-amber-950/80">Actions utilitaires pour ce MVP local.</p>
+        <p className="text-sm text-amber-950/80">
+          Actions utilitaires pour ce MVP local.
+        </p>
       </div>
 
       <div className="card">
         <h3 className="text-lg font-semibold">Sauvegarde</h3>
         <p className="mb-3 mt-1 text-sm text-amber-950/80">
-          Exportez vos données pour les conserver, puis importez-les pour restaurer une sauvegarde.
+          Exportez vos données pour les conserver, puis importez-les pour
+          restaurer une sauvegarde.
         </p>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onExport}
-            className="btn btn-subtle"
-          >
+          <button type="button" onClick={onExport} className="btn btn-subtle">
             Exporter les données
           </button>
           <button
@@ -96,7 +97,9 @@ export function SettingsPage() {
             className="hidden"
           />
         </div>
-        {importMessage && <p className="mt-2 text-sm text-amber-950/80">{importMessage}</p>}
+        {importMessage && (
+          <p className="mt-2 text-sm text-amber-950/80">{importMessage}</p>
+        )}
       </div>
 
       <div className="card">
@@ -118,13 +121,14 @@ export function SettingsPage() {
       <div className="card">
         <h3 className="text-lg font-semibold">Gestion des données</h3>
         <p className="mb-3 mt-1 text-sm text-amber-950/80">
-          Réinitialiser toutes les données de campagne, de session et de PNJ aux valeurs de démo.
+          Réinitialiser toutes les données de campagne, de session et de PNJ aux
+          valeurs de démo.
         </p>
         <button
           type="button"
           onClick={() => {
             const confirmed = window.confirm(
-              "Réinitialiser toutes les données locales avec les valeurs de démo ?"
+              "Réinitialiser toutes les données locales avec les valeurs de démo ?",
             );
             if (confirmed) {
               resetDemoData();
@@ -138,4 +142,3 @@ export function SettingsPage() {
     </section>
   );
 }
-
