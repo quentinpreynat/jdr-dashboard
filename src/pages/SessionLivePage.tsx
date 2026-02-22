@@ -60,8 +60,15 @@ function makeSnippet(value: string, query: string, maxLength: number = 120): str
 
 export function SessionLivePage() {
   const { sessionId } = useParams<{ sessionId: string }>();
-  const { data, addSceneLiveNote, removeSceneLiveNote, updateScene, findCampaignBySessionId } =
-    useAppData();
+  const {
+    data,
+    addSceneLiveNote,
+    removeSceneLiveNote,
+    addSceneChoice,
+    removeSceneChoice,
+    updateScene,
+    findCampaignBySessionId
+  } = useAppData();
   const containerRef = useRef<HTMLElement | null>(null);
   const noteInputRef = useRef<HTMLInputElement | null>(null);
   const scenePanelRef = useRef<HTMLDivElement | null>(null);
@@ -83,13 +90,16 @@ export function SessionLivePage() {
   const [clockLabel, setClockLabel] = useState(() =>
     new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
   );
-  const [isFocusMode, setIsFocusMode] = useState(() => {
-    try {
-      return localStorage.getItem("tor-live-focus-enabled") === "true";
-    } catch {
-      return false;
-    }
-  });
+  const [choiceLabel, setChoiceLabel] = useState("");
+  const [choiceTargetType, setChoiceTargetType] = useState<"place" | "npc" | "none">("none");
+  const [choiceTargetId, setChoiceTargetId] = useState<string>("");
+  const [choiceGotoSceneId, setChoiceGotoSceneId] = useState<string>("");
+  const [rightPanelTab, setRightPanelTab] = useState<"scenes" | "npcs" | "places" | null>(
+    null
+  );
+  const RIGHT_PANEL_COLLAPSED_PX = 70;
+  const RIGHT_PANEL_EXPANDED_PX = 140;
+  const isRightPanelExpanded = rightPanelTab !== null;
   const [isDimMode] = useState(() => {
     try {
       return localStorage.getItem("tor-live-dim-enabled") === "true";
@@ -106,7 +116,6 @@ export function SessionLivePage() {
   const [quickPlaceId, setQuickPlaceId] = useState<string | null>(null);
   const [panelMode, setPanelMode] = useState<"npc" | "place" | "search" | null>(null);
   const [flashSceneId, setFlashSceneId] = useState<string | null>(null);
-  const [viewportWidth, setViewportWidth] = useState<number | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
     if (!selectedSceneId && orderedScenes[0]) {
@@ -129,14 +138,6 @@ export function SessionLivePage() {
   useEffect(() => {
     console.info("[SessionLive] mounted", { sessionId });
   }, [sessionId]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("tor-live-focus-enabled", String(isFocusMode));
-    } catch {
-      // Ignore storage failures (private mode, quota).
-    }
-  }, [isFocusMode]);
 
   useEffect(() => {
     if (panelMode === "search") {
@@ -172,39 +173,6 @@ export function SessionLivePage() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [panelMode]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const updateWidth = () => setViewportWidth(window.innerWidth);
-    updateWidth();
-    window.addEventListener("resize", updateWidth);
-    return () => window.removeEventListener("resize", updateWidth);
-  }, []);
-
-  useEffect(() => {
-    if (!isFocusMode) {
-      return;
-    }
-    scenePanelRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-    const timeout = window.setTimeout(() => {
-      scenePanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
-    return () => window.clearTimeout(timeout);
-  }, [isFocusMode, selectedSceneId]);
-
-  useEffect(() => {
-    if (!isFocusMode) {
-      return;
-    }
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [isFocusMode]);
-
 
   if (!session || !sessionId) {
     return (
@@ -243,6 +211,10 @@ export function SessionLivePage() {
     }
     return { list: data.npcs.filter((npc) => linkedNpcIds.has(npc.id)), hasFallback: false };
   }, [data.npcs, linkedNpcIds]);
+  const choiceTargets = useMemo(
+    () => (choiceTargetType === "place" ? places : sessionNpcs.list),
+    [choiceTargetType, places, sessionNpcs.list]
+  );
 
   useEffect(() => {
     if (!selectedScene) {
@@ -258,6 +230,16 @@ export function SessionLivePage() {
   }, [selectedScene, hasNext, orderedScenes, selectedIndex]);
 
   useEffect(() => {
+    if (choiceTargetType === "none" || choiceTargetId) {
+      return;
+    }
+    const first = choiceTargets[0]?.id ?? "";
+    if (first) {
+      setChoiceTargetId(first);
+    }
+  }, [choiceTargetId, choiceTargets]);
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       // Keyboard shortcuts are scoped to the page and avoid direct modal control here.
       if (event.key === "ArrowLeft") {
@@ -268,8 +250,6 @@ export function SessionLivePage() {
         if (hasNext) {
           setSelectedSceneId(orderedScenes[selectedIndex + 1].id);
         }
-      } else if (event.key.toLowerCase() === "f") {
-        setIsFocusMode((prev) => !prev);
       } else if (event.key.toLowerCase() === "n") {
         noteInputRef.current?.focus();
       }
@@ -452,85 +432,21 @@ export function SessionLivePage() {
       </header>
 
         <div
-          className="live-layout mx-auto grid items-start w-full max-w-[1200px] min-w-0 gap-4 grid-cols-[1fr_1fr] px-6"
+          className="live-layout mx-auto w-full max-w-[1200px] min-w-0 px-6"
+          style={{
+            paddingRight: isRightPanelExpanded ? RIGHT_PANEL_EXPANDED_PX : RIGHT_PANEL_COLLAPSED_PX
+          }}
         >
-        <div className="scene-list card card-muted min-w-0 space-y-3">
-          <p className="text-sm font-semibold">Scènes</p>
-          <div className="space-y-3">
-            {orderedScenes.map((scene) => {
-              const isSelected = scene.id === selectedSceneId;
-              return (
-                <div
-                  key={scene.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setSelectedSceneId(scene.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      setSelectedSceneId(scene.id);
-                    }
-                  }}
-                  className={`flex min-h-12 w-full items-center justify-between gap-3 rounded-md border px-4 py-3 text-left text-sm transition ${
-                    isSelected
-                      ? "border-amber-900/60 bg-amber-50 text-amber-950 shadow-sm"
-                      : "border-amber-900/20 bg-white/90 text-amber-950/80 hover:bg-amber-50"
-                  } ${isSelected ? "is-selected" : ""} ${flashSceneId === scene.id ? "flash-ring" : ""}`}
-                >
-                  <div className="flex flex-col">
-                    <span className="font-medium">{scene.title || `Scène ${scene.order}`}</span>
-                    {(scene.liveNotes?.length ?? 0) > 0 && (
-                      <span className="text-xs text-amber-900/60">📝 Notes : {scene.liveNotes?.length ?? 0}</span>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      updateScene(sessionId, scene.id, { done: !scene.done });
-                    }}
-                    className={`badge px-3 text-xs ${
-                      scene.done ? "badge-friendly" : "badge-neutral"
-                    }`}
-                  >
-                    {scene.done ? "Terminée" : "En cours"}
-                  </button>
-                </div>
-              );
-            })}
-            {orderedScenes.length === 0 && (
-              <p className="card card-dashed card-compact text-sm text-amber-950/70">
-                Aucune scène pour le moment.
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div
-          ref={scenePanelRef}
-          className="scene-panel card card-muted flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden"
-        >
+          <div
+            ref={scenePanelRef}
+            className="scene-panel card card-muted flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden transition-all duration-300 ease-in-out"
+          >
           <div className="fade-in flex min-h-0 flex-col" key={selectedScene?.id ?? "empty"}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-amber-900/70">Scène sélectionnée</p>
                 <div className="flex flex-wrap items-center gap-3">
                   <h4 className="text-lg font-semibold">{selectedSceneTitle}</h4>
-                  <div className="scene-header-actions">
-                    <button
-                      type="button"
-                      className={`btn btn-subtle ${isFocusMode ? "btn-active" : ""}`}
-                      onClick={() => {
-                        setIsFocusMode(true);
-                        setPanelMode(null);
-                        setQuickNpcId(null);
-                        setQuickPlaceId(null);
-                      }}
-                      aria-pressed={isFocusMode}
-                      aria-label={isFocusMode ? "Quitter le mode Focus" : "Activer le mode Focus"}
-                    >
-                      {isFocusMode ? "Exit Focus" : "Focus"}
-                    </button>
-                  </div>
                 </div>
                 {selectedPlace && (
                   <button
@@ -562,173 +478,496 @@ export function SessionLivePage() {
             </div>
 
             <div className="mt-4 flex min-h-0 flex-col gap-4 overflow-y-auto pr-1">
-              {isFocusMode && (
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (hasPrev) {
-                        setSelectedSceneId(orderedScenes[selectedIndex - 1].id);
-                      }
-                    }}
-                    disabled={!hasPrev}
-                    className="focus-nav btn btn-subtle text-xs disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <span aria-hidden="true" className="text-base">
-                      ‹
-                    </span>
-                    <span>Précédente</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (hasNext) {
-                        setSelectedSceneId(orderedScenes[selectedIndex + 1].id);
-                      }
-                    }}
-                    disabled={!hasNext}
-                    className="focus-nav btn btn-subtle text-xs disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <span>Suivante</span>
-                    <span aria-hidden="true" className="text-base">
-                      ›
-                    </span>
-                  </button>
-                </div>
-              )}
               <section className="live-card space-y-2 p-4 sm:p-5">
                 <p className="live-label">Texte de scène</p>
                 <h5 className="text-base font-semibold">{selectedSceneTitle}</h5>
-                <div className="parchment-text text-sm live-muted">
+                <div className="parchment-text text-sm live-muted whitespace-pre-line">
                   {selectedScene?.text || "Aucun texte pour le moment."}
                 </div>
               </section>
 
-              <section className="live-card space-y-2 p-4 sm:p-5">
-                <p className="live-label">Personnages</p>
-                <div className="space-y-2">
-                  {linkedNpcs.map((npc) => (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setQuickNpcId(npc.id);
-                        setPanelMode("npc");
-                      }}
-                      key={npc.id}
-                      className="live-item card-compact flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm hover:bg-amber-50 cursor-pointer"
-                    >
-                      <div>
-                        <p className="font-medium">{npc.name || "PNJ sans nom"}</p>
-                        <p className="text-xs live-muted">{npc.role || "Aucun rôle"}</p>
-                      </div>
-                      <span className={attitudeStyles[npc.attitude] ?? attitudeStyles.neutral}>
-                        {npc.attitude}
-                      </span>
-                    </button>
-                  ))}
-                  {linkedNpcs.length === 0 && (
-                    <p className="card card-dashed card-compact text-sm live-muted">
-                      Aucun personnage lié à cette scène.
-                    </p>
-                  )}
-                </div>
-              </section>
-
-              <section className="live-card flex min-h-[280px] flex-col p-4 sm:p-5">
-                <div className="flex flex-shrink-0 items-center justify-between">
-                  <p className="live-label">Notes en direct</p>
-                </div>
-                <div className="mt-3 flex-1 min-h-0 space-y-2 overflow-y-auto pr-1">
-                  {selectedScene?.liveNotes?.map((note) => (
-                    <div
-                      key={note.id}
-                      className="live-item card-compact flex min-h-11 items-start justify-between gap-3 text-sm"
-                    >
-                      {(() => {
-                        const sourceScene = orderedScenes.find((scene) => scene.id === note.createdFromSceneId);
-                        const sourceLabel = sourceScene
-                          ? sourceScene.title?.trim() || `Scène ${sourceScene.order}`
-                          : note.createdFromSceneId
-                            ? "(scène supprimée)"
-                            : selectedSceneTitle;
-                        const labelText = sourceLabel === selectedSceneTitle ? `Depuis: ${selectedSceneTitle}` : `Depuis: ${sourceLabel}`;
-                        return (
-                          <p className="text-xs live-muted">
-                            {new Date(note.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} —{" "}
-                            <span className="font-medium">{labelText}</span> — {note.text}
-                          </p>
-                        );
-                      })()}
+              <section className="rounded-lg border border-amber-900/10 bg-white/40 p-3 sm:p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/60">Choix</p>
+                <div className="mt-2 space-y-2">
+                  {(selectedScene?.choices ?? []).map((choice) => (
+                    <div key={choice.id} className="flex items-center gap-2">
                       <button
                         type="button"
+                        className="flex-1 rounded-md border border-amber-900/10 bg-white/60 px-3 py-2 text-left text-sm hover:bg-amber-50/60"
+                        onClick={() => {
+                          if (choice.targetType === "place" && choice.targetId) {
+                            setQuickPlaceId(choice.targetId);
+                            setPanelMode("place");
+                          } else if (choice.targetType === "npc" && choice.targetId) {
+                            setQuickNpcId(choice.targetId);
+                            setPanelMode("npc");
+                          }
+                          if (choice.gotoSceneId) {
+                            setSelectedSceneId(choice.gotoSceneId);
+                            setFlashSceneId(choice.gotoSceneId);
+                            window.setTimeout(() => setFlashSceneId(null), 800);
+                          }
+                        }}
+                      >
+                        <span className="mr-2" aria-hidden="true">
+                          {choice.targetType === "place"
+                            ? "📍"
+                            : choice.targetType === "npc"
+                              ? "🎭"
+                              : "➜"}
+                        </span>
+                        {choice.label}
+                        {choice.gotoSceneId && <span className="ml-2 text-xs text-amber-900/60">➜</span>}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-subtle text-xs"
                         onClick={() => {
                           if (!sessionId || !selectedScene) {
                             return;
                           }
-                          const confirmed = window.confirm("Supprimer cette note ?");
-                          if (!confirmed) {
+                          const ok = window.confirm("Supprimer ce choix ?");
+                          if (!ok) {
                             return;
                           }
-                          removeSceneLiveNote(sessionId, selectedScene.id, note.id);
+                          removeSceneChoice(sessionId, selectedScene.id, choice.id);
                         }}
-                        className="btn btn-subtle text-xs"
-                        aria-label="Supprimer la note"
                       >
-                        Supprimer
+                        ✕
                       </button>
                     </div>
                   ))}
-                  {(selectedScene?.liveNotes?.length ?? 0) === 0 && (
-                    <p className="card card-dashed card-compact text-sm live-muted">
-                      Aucune note pour le moment.
+
+                  {(selectedScene?.choices?.length ?? 0) === 0 && (
+                    <p className="rounded-md border border-amber-900/10 bg-white/50 px-3 py-2 text-sm live-muted">
+                      Aucun choix défini.
                     </p>
                   )}
                 </div>
-                <div className="mt-3 flex flex-shrink-0 flex-col gap-2 lg:flex-row">
-                  <label className="flex min-h-11 items-center gap-2 text-xs live-muted">
-                    Ajouter à :
-                    <select
-                      value={noteTargetSceneId ?? ""}
-                      onChange={(event) => setNoteTargetSceneId(event.target.value || null)}
-                      className="live-input min-h-11 w-44 flex-shrink-0 rounded-md px-3 py-2 text-sm"
-                    >
-                      {orderedScenes.map((scene, index) => {
-                        const title = scene.title?.trim() || `Scène ${scene.order}`;
-                        const label =
-                          selectedScene && hasNext && index === selectedIndex + 1
-                            ? `Scène suivante — ${title}`
-                            : title;
-                        return (
-                          <option key={scene.id} value={scene.id}>
-                            {label}
-                          </option>
-                        );
-                      })}
-                      {orderedScenes.length === 0 && <option value="">Aucune scène</option>}
-                    </select>
-                  </label>
+
+                <div className="mt-3 space-y-2">
                   <input
-                    ref={noteInputRef}
-                    value={noteText}
-                    onChange={(event) => setNoteText(event.target.value)}
-                    placeholder="Ajouter une note rapide..."
-                    className="live-input min-h-11 flex-1 min-w-0 rounded-md px-3 py-2 text-sm"
+                    value={choiceLabel}
+                    onChange={(event) => setChoiceLabel(event.target.value)}
+                    placeholder="Ex : Aller à la taverne / Parler au forgeron..."
+                    className="live-input min-h-10 w-full rounded-md px-3 py-2 text-sm"
                   />
-                  <button
-                    type="button"
-                    onClick={handleAddNote}
-                    className="btn btn-primary flex-shrink-0"
-                  >
-                    Ajouter
-                  </button>
+
+                  <div className="flex gap-2">
+                    <select
+                      value={choiceTargetType}
+                      onChange={(event) => {
+                        const nextType = event.target.value as "place" | "npc";
+                        setChoiceTargetType(nextType);
+                        setChoiceTargetId("");
+                      }}
+                      className="live-input min-h-10 w-28 rounded-md px-2 py-2 text-sm"
+                    >
+                      <option value="none">Aucun</option>
+                      <option value="place">Lieu</option>
+                      <option value="npc">PNJ</option>
+                    </select>
+
+                    <select
+                      value={choiceTargetId}
+                      onChange={(event) => setChoiceTargetId(event.target.value)}
+                      className="live-input min-h-10 flex-1 rounded-md px-2 py-2 text-sm"
+                    >
+                      {choiceTargetType === "none" && <option value="">Aucune cible</option>}
+                      {choiceTargetType === "place" &&
+                        (places.length > 0 ? (
+                          places.map((place) => (
+                            <option key={place.id} value={place.id}>
+                              {place.name || "Lieu sans nom"}
+                            </option>
+                          ))
+                        ) : (
+                          <option value="">Aucun lieu</option>
+                        ))}
+                      {choiceTargetType === "npc" &&
+                        (sessionNpcs.list.length > 0 ? (
+                          sessionNpcs.list.map((npc) => (
+                            <option key={npc.id} value={npc.id}>
+                              {npc.name || "PNJ sans nom"}
+                            </option>
+                          ))
+                        ) : (
+                          <option value="">Aucun PNJ</option>
+                        ))}
+                    </select>
+
+                    <select
+                      value={choiceGotoSceneId}
+                      onChange={(event) => setChoiceGotoSceneId(event.target.value)}
+                      className="live-input min-h-10 flex-1 rounded-md px-2 py-2 text-sm"
+                    >
+                      <option value="">(Aucune)</option>
+                      {orderedScenes.map((scene) => (
+                        <option key={scene.id} value={scene.id}>
+                          {scene.title?.trim() || `Scène ${scene.order}`}
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={choiceTargetType !== "none" && !choiceTargetId}
+                      onClick={() => {
+                        if (!sessionId || !selectedScene) {
+                          return;
+                        }
+                        addSceneChoice(sessionId, selectedScene.id, {
+                          label: choiceLabel,
+                          targetType: choiceTargetType,
+                          targetId: choiceTargetId || undefined,
+                          gotoSceneId: choiceGotoSceneId || undefined
+                        });
+                        setChoiceLabel("");
+                      }}
+                    >
+                      Ajouter
+                    </button>
+                  </div>
                 </div>
               </section>
+
+              <div className="grid gap-3 lg:grid-cols-2">
+                <section className="rounded-lg border border-amber-900/10 bg-white/40 p-3 sm:p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/60">
+                    Personnages
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {linkedNpcs.map((npc) => (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQuickNpcId(npc.id);
+                          setPanelMode("npc");
+                        }}
+                        key={npc.id}
+                        className="flex min-h-10 w-full items-center justify-between gap-3 rounded-md border border-amber-900/10 bg-white/60 px-3 py-2 text-left text-sm hover:bg-amber-50/60"
+                      >
+                        <div>
+                          <p className="font-medium">{npc.name || "PNJ sans nom"}</p>
+                          <p className="text-xs live-muted">{npc.role || "Aucun rôle"}</p>
+                        </div>
+                        <span className={attitudeStyles[npc.attitude] ?? attitudeStyles.neutral}>
+                          {npc.attitude}
+                        </span>
+                      </button>
+                    ))}
+                    {linkedNpcs.length === 0 && (
+                      <p className="rounded-md border border-amber-900/10 bg-white/50 px-3 py-2 text-sm live-muted">
+                        Aucun personnage lié à cette scène.
+                      </p>
+                    )}
+                  </div>
+                </section>
+
+                <section className="rounded-lg border border-amber-900/10 bg-white/40 p-3 sm:p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/60">
+                      Notes
+                    </p>
+                  </div>
+                  <div className="mt-2 flex min-h-0 flex-1 flex-col space-y-2 overflow-y-auto pr-1">
+                    {selectedScene?.liveNotes?.map((note) => (
+                      <div
+                        key={note.id}
+                        className="flex items-start justify-between gap-3 rounded-md border border-amber-900/10 bg-white/60 px-3 py-2 text-sm"
+                      >
+                        {(() => {
+                          const sourceScene = orderedScenes.find(
+                            (scene) => scene.id === note.createdFromSceneId
+                          );
+                          const sourceLabel = sourceScene
+                            ? sourceScene.title?.trim() || `Scène ${sourceScene.order}`
+                            : note.createdFromSceneId
+                              ? "(scène supprimée)"
+                              : selectedSceneTitle;
+                          const labelText =
+                            sourceLabel === selectedSceneTitle
+                              ? `Depuis: ${selectedSceneTitle}`
+                              : `Depuis: ${sourceLabel}`;
+                          return (
+                            <p className="text-xs live-muted">
+                              {new Date(note.createdAt).toLocaleTimeString("fr-FR", {
+                                hour: "2-digit",
+                                minute: "2-digit"
+                              })}{" "}
+                              — <span className="font-medium">{labelText}</span> — {note.text}
+                            </p>
+                          );
+                        })()}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!sessionId || !selectedScene) {
+                              return;
+                            }
+                            const confirmed = window.confirm("Supprimer cette note ?");
+                            if (!confirmed) {
+                              return;
+                            }
+                            removeSceneLiveNote(sessionId, selectedScene.id, note.id);
+                          }}
+                          className="btn btn-subtle text-xs"
+                          aria-label="Supprimer la note"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    ))}
+                    {(selectedScene?.liveNotes?.length ?? 0) === 0 && (
+                      <p className="rounded-md border border-amber-900/10 bg-white/50 px-3 py-2 text-sm live-muted">
+                        Aucune note pour le moment.
+                      </p>
+                    )}
+                  </div>
+                  <div className="mt-3 flex flex-shrink-0 flex-col gap-2 lg:flex-row">
+                    <label className="flex min-h-11 items-center gap-2 text-xs live-muted">
+                      Ajouter à :
+                      <select
+                        value={noteTargetSceneId ?? ""}
+                        onChange={(event) => setNoteTargetSceneId(event.target.value || null)}
+                        className="live-input min-h-11 w-44 flex-shrink-0 rounded-md px-3 py-2 text-sm"
+                      >
+                        {orderedScenes.map((scene, index) => {
+                          const title = scene.title?.trim() || `Scène ${scene.order}`;
+                          const label =
+                            selectedScene && hasNext && index === selectedIndex + 1
+                              ? `Scène suivante — ${title}`
+                              : title;
+                          return (
+                            <option key={scene.id} value={scene.id}>
+                              {label}
+                            </option>
+                          );
+                        })}
+                        {orderedScenes.length === 0 && <option value="">Aucune scène</option>}
+                      </select>
+                    </label>
+                    <input
+                      ref={noteInputRef}
+                      value={noteText}
+                      onChange={(event) => setNoteText(event.target.value)}
+                      placeholder="Ajouter une note rapide..."
+                      className="live-input min-h-11 flex-1 min-w-0 rounded-md px-3 py-2 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddNote}
+                      className="btn btn-primary flex-shrink-0"
+                    >
+                      Ajouter
+                    </button>
+                  </div>
+                </section>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
+      <div
+        className="fixed right-0 top-[72px] z-40 h-[calc(100vh-72px)] border-l border-amber-900/20 bg-[#E7D8BF]/70 backdrop-blur-sm flex flex-col p-3"
+        style={{
+          width: isRightPanelExpanded ? RIGHT_PANEL_EXPANDED_PX : RIGHT_PANEL_COLLAPSED_PX,
+          transition: "width 240ms ease"
+        }}
+      >
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => setRightPanelTab((prev) => (prev === "scenes" ? null : "scenes"))}
+            className={`relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
+              rightPanelTab === "scenes"
+                ? "border-amber-900/60 bg-amber-50"
+                : "border-amber-900/20 bg-[#F2E7D4] hover:bg-amber-50"
+            }`}
+          >
+            {rightPanelTab === "scenes" && (
+              <span aria-hidden="true" className="absolute top-1 right-1">
+                <span
+                  className="absolute inset-0 rounded-full bg-amber-500/30 animate-ping"
+                  style={{ animationDuration: "1.6s" }}
+                />
+                <span
+                  className="relative block h-2.5 w-2.5 rounded-full bg-amber-700 ring-2 ring-amber-300/60 shadow-[0_0_6px_rgba(180,83,9,0.35)]"
+                />
+              </span>
+            )}
+            <span className="flex w-full flex-col items-center justify-center gap-1">
+              <span aria-hidden="true" className="text-base">
+                🎬
+              </span>
+              {!isRightPanelExpanded && (
+                <span className="text-[10px] font-semibold tracking-wide text-amber-900/70">
+                  Sc
+                </span>
+              )}
+              {isRightPanelExpanded && (
+                <span className="w-full truncate text-left text-xs font-medium text-amber-950/80">
+                  Scènes
+                </span>
+              )}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setRightPanelTab((prev) => (prev === "npcs" ? null : "npcs"))}
+            className={`relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
+              rightPanelTab === "npcs"
+                ? "border-amber-900/60 bg-amber-50"
+                : "border-amber-900/20 bg-[#F2E7D4] hover:bg-amber-50"
+            }`}
+          >
+            {rightPanelTab === "npcs" && (
+              <span aria-hidden="true" className="absolute top-1 right-1">
+                <span
+                  className="absolute inset-0 rounded-full bg-amber-500/30 animate-ping"
+                  style={{ animationDuration: "1.6s" }}
+                />
+                <span
+                  className="relative block h-2.5 w-2.5 rounded-full bg-amber-700 ring-2 ring-amber-300/60 shadow-[0_0_6px_rgba(180,83,9,0.35)]"
+                />
+              </span>
+            )}
+            <span className="flex w-full flex-col items-center justify-center gap-1">
+              <span aria-hidden="true" className="text-base">
+                🎭
+              </span>
+              {!isRightPanelExpanded && (
+                <span className="text-[10px] font-semibold tracking-wide text-amber-900/70">
+                  PNJ
+                </span>
+              )}
+              {isRightPanelExpanded && (
+                <span className="w-full truncate text-left text-xs font-medium text-amber-950/80">
+                  PNJ
+                </span>
+              )}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setRightPanelTab((prev) => (prev === "places" ? null : "places"))}
+            className={`relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
+              rightPanelTab === "places"
+                ? "border-amber-900/60 bg-amber-50"
+                : "border-amber-900/20 bg-[#F2E7D4] hover:bg-amber-50"
+            }`}
+          >
+            {rightPanelTab === "places" && (
+              <span aria-hidden="true" className="absolute top-1 right-1">
+                <span
+                  className="absolute inset-0 rounded-full bg-amber-500/30 animate-ping"
+                  style={{ animationDuration: "1.6s" }}
+                />
+                <span
+                  className="relative block h-2.5 w-2.5 rounded-full bg-amber-700 ring-2 ring-amber-300/60 shadow-[0_0_6px_rgba(180,83,9,0.35)]"
+                />
+              </span>
+            )}
+            <span className="flex w-full flex-col items-center justify-center gap-1">
+              <span aria-hidden="true" className="text-base">
+                📍
+              </span>
+              {!isRightPanelExpanded && (
+                <span className="text-[10px] font-semibold tracking-wide text-amber-900/70">
+                  Li
+                </span>
+              )}
+              {isRightPanelExpanded && (
+                <span className="w-full truncate text-left text-xs font-medium text-amber-950/80">
+                  Lieux
+                </span>
+              )}
+            </span>
+          </button>
+        </div>
+        {rightPanelTab === "scenes" && (
+          <div
+            className="mt-3 space-y-2 overflow-y-auto pr-1"
+            style={{ maxHeight: "calc(100vh - 72px - 140px)" }}
+          >
+            {orderedScenes.map((scene) => (
+              <button
+                key={scene.id}
+                type="button"
+                onClick={() => setSelectedSceneId(scene.id)}
+                className={`w-full rounded-md border px-2 py-2 text-left text-sm ${
+                  scene.id === selectedSceneId
+                    ? "border-amber-900/60 bg-amber-50"
+                    : "border-amber-900/20 bg-white/90 hover:bg-amber-50"
+                }`}
+              >
+                <div className="font-medium">{scene.title || `Scène ${scene.order}`}</div>
+                {(scene.liveNotes?.length ?? 0) > 0 && (
+                  <div className="mt-1 text-xs text-amber-900/60">
+                    📝 Notes : {scene.liveNotes.length}
+                  </div>
+                )}
+                {(scene.linkedNpcIds?.length ?? 0) > 0 && (
+                  <div className="text-xs text-amber-900/60">
+                    🎭 PNJ : {scene.linkedNpcIds.length}
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+        {rightPanelTab === "npcs" && (
+          <div
+            className="mt-3 space-y-2 overflow-y-auto pr-1"
+            style={{ maxHeight: "calc(100vh - 72px - 140px)" }}
+          >
+            {sessionNpcs.list.map((npc) => (
+              <button
+                key={npc.id}
+                type="button"
+                onClick={() => {
+                  setQuickNpcId(npc.id);
+                  setPanelMode("npc");
+                }}
+                className="w-full rounded-md border border-amber-900/20 bg-white/90 px-2 py-2 text-left text-sm hover:bg-amber-50"
+              >
+                <div className="font-medium">{npc.name || "PNJ sans nom"}</div>
+                <div className="text-xs text-amber-900/60">
+                  {npc.role || (sessionNpcs.hasFallback ? "Hors session" : "Aucun rôle")}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+        {rightPanelTab === "places" && (
+          <div
+            className="mt-3 space-y-2 overflow-y-auto pr-1"
+            style={{ maxHeight: "calc(100vh - 72px - 140px)" }}
+          >
+            {places.map((place) => (
+              <button
+                key={place.id}
+                type="button"
+                onClick={() => {
+                  setQuickPlaceId(place.id);
+                  setPanelMode("place");
+                }}
+                className="w-full rounded-md border border-amber-900/20 bg-white/90 px-2 py-2 text-left text-sm hover:bg-amber-50"
+              >
+                <div className="font-medium">{place.name || "Lieu sans nom"}</div>
+                <div className="text-xs text-amber-900/60">{place.region || "Lieu de campagne"}</div>
+              </button>
+            ))}
+            {places.length === 0 && (
+              <p className="text-xs text-amber-900/60">Aucun lieu disponible.</p>
+            )}
+          </div>
+        )}
       </div>
-      </div>
+
       <>
         <div
           className="fixed top-[72px] left-0 right-0 bottom-0 z-40 bg-black/25 backdrop-blur-sm transition-opacity duration-300 motion-reduce:transition-none"
@@ -748,13 +987,7 @@ export function SessionLivePage() {
           aria-hidden={!isQuickOpen}
           style={{ pointerEvents: isQuickOpen ? "auto" : "none" }}
         >
-          <div
-            className={`h-full overflow-y-auto w-[90vw] sm:w-[360px] lg:w-[420px]`}
-            style={{
-              width: isFocusMode && (viewportWidth ?? 0) >= 1024 ? "60vw" : undefined,
-              maxWidth: isFocusMode && (viewportWidth ?? 0) >= 1024 ? "640px" : undefined
-            }}
-          >
+          <div className={`h-full overflow-y-auto w-[90vw] sm:w-[360px] lg:w-[420px]`}>
             <div
               className={`h-full p-4 transition-opacity duration-300 motion-reduce:transition-none motion-reduce:opacity-100 will-change-transform ${
                 isQuickOpen ? "opacity-100" : "opacity-0"
@@ -995,216 +1228,7 @@ export function SessionLivePage() {
           </div>
         </aside>
       </>
-      {isFocusMode && selectedScene && (
-        <div className="fixed inset-0 z-[60]">
-          <div className="absolute inset-0 bg-black/10" />
-          <div className="absolute inset-0 px-6 py-5">
-            <div className="mx-auto h-full w-full max-w-[1200px] overflow-y-auto rounded-xl border border-amber-900/20 bg-[#F2E7D4] shadow-2xl">
-              <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-amber-900/10 bg-[#F2E7D4]/95 px-5 py-4 backdrop-blur">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-amber-900/60">Mode Focus</p>
-                  <h3 className="text-lg font-semibold">
-                    {selectedScene.title || `Scène ${selectedScene.order}`}
-                  </h3>
-                  {selectedPlace && (
-                    <button
-                      type="button"
-                      className="text-sm text-amber-950/70 hover:underline"
-                      onClick={() => {
-                        setQuickPlaceId(selectedPlace.id);
-                        setPanelMode("place");
-                      }}
-                    >
-                      📍 {selectedPlace.name}
-                      {selectedPlace.region ? ` — ${selectedPlace.region}` : ""}
-                    </button>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsFocusMode(false)}
-                  className="btn btn-subtle"
-                >
-                  Exit Focus
-                </button>
-              </div>
-
-              <div className="p-5 space-y-4">
-                {isFocusMode && (
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (hasPrev) {
-                          setSelectedSceneId(orderedScenes[selectedIndex - 1].id);
-                        }
-                      }}
-                      disabled={!hasPrev}
-                      className="focus-nav btn btn-subtle text-xs disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <span aria-hidden="true" className="text-base">
-                        ‹
-                      </span>
-                      <span>Précédente</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (hasNext) {
-                          setSelectedSceneId(orderedScenes[selectedIndex + 1].id);
-                        }
-                      }}
-                      disabled={!hasNext}
-                      className="focus-nav btn btn-subtle text-xs disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <span>Suivante</span>
-                      <span aria-hidden="true" className="text-base">
-                        ›
-                      </span>
-                    </button>
-                  </div>
-                )}
-
-                <section className="live-card space-y-2 p-4 sm:p-5">
-                  <p className="live-label">Texte de scène</p>
-                  <h5 className="text-base font-semibold">{selectedSceneTitle}</h5>
-                  <div className="parchment-text text-sm live-muted">
-                    {selectedScene?.text || "Aucun texte pour le moment."}
-                  </div>
-                </section>
-
-                <section className="live-card space-y-2 p-4 sm:p-5">
-                  <p className="live-label">Personnages</p>
-                  <div className="space-y-2">
-                    {linkedNpcs.map((npc) => (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setQuickNpcId(npc.id);
-                          setPanelMode("npc");
-                        }}
-                        key={npc.id}
-                        className="live-item card-compact flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm hover:bg-amber-50 cursor-pointer"
-                      >
-                        <div>
-                          <p className="font-medium">{npc.name || "PNJ sans nom"}</p>
-                          <p className="text-xs live-muted">{npc.role || "Aucun rôle"}</p>
-                        </div>
-                        <span className={attitudeStyles[npc.attitude] ?? attitudeStyles.neutral}>
-                          {npc.attitude}
-                        </span>
-                      </button>
-                    ))}
-                    {linkedNpcs.length === 0 && (
-                      <p className="card card-dashed card-compact text-sm live-muted">
-                        Aucun personnage lié à cette scène.
-                      </p>
-                    )}
-                  </div>
-                </section>
-
-                <section className="live-card flex min-h-[280px] flex-col p-4 sm:p-5">
-                  <div className="flex flex-shrink-0 items-center justify-between">
-                    <p className="live-label">Notes en direct</p>
-                  </div>
-                  <div className="mt-3 flex-1 min-h-0 space-y-2 overflow-y-auto pr-1">
-                    {selectedScene?.liveNotes?.map((note) => (
-                      <div
-                        key={note.id}
-                        className="live-item card-compact flex min-h-11 items-start justify-between gap-3 text-sm"
-                      >
-                        {(() => {
-                          const sourceScene = orderedScenes.find(
-                            (scene) => scene.id === note.createdFromSceneId
-                          );
-                          const sourceLabel = sourceScene
-                            ? sourceScene.title?.trim() || `Scène ${sourceScene.order}`
-                            : note.createdFromSceneId
-                              ? "(scène supprimée)"
-                              : selectedSceneTitle;
-                          const labelText =
-                            sourceLabel === selectedSceneTitle
-                              ? `Depuis: ${selectedSceneTitle}`
-                              : `Depuis: ${sourceLabel}`;
-                          return (
-                            <p className="text-xs live-muted">
-                              {new Date(note.createdAt).toLocaleTimeString("fr-FR", {
-                                hour: "2-digit",
-                                minute: "2-digit"
-                              })}{" "}
-                              — <span className="font-medium">{labelText}</span> — {note.text}
-                            </p>
-                          );
-                        })()}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!sessionId || !selectedScene) {
-                              return;
-                            }
-                            const confirmed = window.confirm("Supprimer cette note ?");
-                            if (!confirmed) {
-                              return;
-                            }
-                            removeSceneLiveNote(sessionId, selectedScene.id, note.id);
-                          }}
-                          className="btn btn-subtle text-xs"
-                          aria-label="Supprimer la note"
-                        >
-                          Supprimer
-                        </button>
-                      </div>
-                    ))}
-                    {(selectedScene?.liveNotes?.length ?? 0) === 0 && (
-                      <p className="card card-dashed card-compact text-sm live-muted">
-                        Aucune note pour le moment.
-                      </p>
-                    )}
-                  </div>
-                  <div className="mt-3 flex flex-shrink-0 flex-col gap-2 lg:flex-row">
-                    <label className="flex min-h-11 items-center gap-2 text-xs live-muted">
-                      Ajouter à :
-                      <select
-                        value={noteTargetSceneId ?? ""}
-                        onChange={(event) => setNoteTargetSceneId(event.target.value || null)}
-                        className="live-input min-h-11 w-44 flex-shrink-0 rounded-md px-3 py-2 text-sm"
-                      >
-                        {orderedScenes.map((scene, index) => {
-                          const title = scene.title?.trim() || `Scène ${scene.order}`;
-                          const label =
-                            selectedScene && hasNext && index === selectedIndex + 1
-                              ? `Scène suivante — ${title}`
-                              : title;
-                          return (
-                            <option key={scene.id} value={scene.id}>
-                              {label}
-                            </option>
-                          );
-                        })}
-                        {orderedScenes.length === 0 && <option value="">Aucune scène</option>}
-                      </select>
-                    </label>
-                    <input
-                      ref={noteInputRef}
-                      value={noteText}
-                      onChange={(event) => setNoteText(event.target.value)}
-                      placeholder="Ajouter une note rapide..."
-                      className="live-input min-h-11 flex-1 min-w-0 rounded-md px-3 py-2 text-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddNote}
-                      className="btn btn-primary flex-shrink-0"
-                    >
-                      Ajouter
-                    </button>
-                  </div>
-                </section>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </section>
   );
 }

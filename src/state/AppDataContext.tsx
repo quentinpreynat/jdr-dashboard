@@ -22,6 +22,12 @@ interface AppDataContextValue {
   updateScene(sessionId: string, sceneId: string, fields: Partial<Omit<Scene, "id" | "order">>): void;
   addSceneLiveNote(sessionId: string, targetSceneId: string, text: string, createdFromSceneId?: string): void;
   removeSceneLiveNote(sessionId: string, sceneId: string, noteId: string): void;
+  addSceneChoice(
+    sessionId: string,
+    sceneId: string,
+    choice: { label: string; targetType: "place" | "npc" | "none"; targetId?: string; gotoSceneId?: string }
+  ): void;
+  removeSceneChoice(sessionId: string, sceneId: string, choiceId: string): void;
   deleteScene(sessionId: string, sceneId: string): void;
   moveScene(sessionId: string, sceneId: string, direction: "up" | "down"): void;
   setSceneNpcLink(sessionId: string, sceneId: string, npcId: string, linked: boolean): void;
@@ -74,6 +80,7 @@ function ensureSessionTimestamps(session: Session): Session {
       ...scene,
       linkedNpcIds: scene.linkedNpcIds ?? [],
       done: scene.done ?? false,
+      choices: scene.choices ?? [],
       liveNotes: (scene.liveNotes ?? []).map((note) => ({
         ...note,
         createdAt: typeof note.createdAt === "number" ? note.createdAt : Date.parse(String(note.createdAt))
@@ -136,6 +143,25 @@ function isLiveNote(value: unknown): value is { id: string; text: string; create
   );
 }
 
+function isSceneChoice(
+  value: unknown
+): value is { id: string; label: string; targetType: "place" | "npc" | "none"; targetId?: string; gotoSceneId?: string } {
+  if (!isRecord(value)) {
+    return false;
+  }
+  const targetType = value.targetType;
+  const validTargetType = targetType === "place" || targetType === "npc" || targetType === "none";
+  const targetId = value.targetId;
+  const gotoSceneId = value.gotoSceneId;
+  return (
+    typeof value.id === "string" &&
+    typeof value.label === "string" &&
+    validTargetType &&
+    (targetId === undefined || typeof targetId === "string") &&
+    (gotoSceneId === undefined || typeof gotoSceneId === "string")
+  );
+}
+
 function isScene(value: unknown): value is Scene {
   if (!isRecord(value)) {
     return false;
@@ -143,6 +169,7 @@ function isScene(value: unknown): value is Scene {
   const linkedNpcIds = value.linkedNpcIds;
   const liveNotes = value.liveNotes;
   const placeId = value.placeId;
+  const choices = value.choices;
   return (
     typeof value.id === "string" &&
     typeof value.title === "string" &&
@@ -151,7 +178,8 @@ function isScene(value: unknown): value is Scene {
     (linkedNpcIds === undefined || isStringArray(linkedNpcIds)) &&
     (placeId === undefined || typeof placeId === "string") &&
     (value.done === undefined || typeof value.done === "boolean") &&
-    (liveNotes === undefined || (Array.isArray(liveNotes) && liveNotes.every(isLiveNote)))
+    (liveNotes === undefined || (Array.isArray(liveNotes) && liveNotes.every(isLiveNote))) &&
+    (choices === undefined || (Array.isArray(choices) && choices.every(isSceneChoice)))
   );
 }
 
@@ -514,6 +542,71 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                 return {
                   ...scene,
                   liveNotes: (scene.liveNotes ?? []).filter((note) => note.id !== noteId)
+                };
+              }),
+              updatedAt: timestamp
+            };
+          })
+        }));
+      },
+      addSceneChoice(sessionId, sceneId, choice) {
+        const trimmedLabel = choice.label.trim();
+        if (!trimmedLabel) {
+          return;
+        }
+        if (choice.targetType !== "none" && !choice.targetId) {
+          return;
+        }
+        const timestamp = nowIso();
+        const choiceId = createId("choice");
+        setData((prev) => ({
+          ...prev,
+          sessions: prev.sessions.map((session) => {
+            if (session.id !== sessionId) {
+              return session;
+            }
+
+            return {
+              ...session,
+              scenes: session.scenes.map((scene) => {
+                if (scene.id !== sceneId) {
+                  return scene;
+                }
+                const nextChoices = [
+                  ...(scene.choices ?? []),
+                  {
+                    id: choiceId,
+                    label: trimmedLabel,
+                    targetType: choice.targetType,
+                    targetId: choice.targetType === "none" ? undefined : choice.targetId,
+                    gotoSceneId: choice.gotoSceneId || undefined
+                  }
+                ];
+                return { ...scene, choices: nextChoices };
+              }),
+              updatedAt: timestamp
+            };
+          })
+        }));
+      },
+      removeSceneChoice(sessionId, sceneId, choiceId) {
+        const timestamp = nowIso();
+        setData((prev) => ({
+          ...prev,
+          sessions: prev.sessions.map((session) => {
+            if (session.id !== sessionId) {
+              return session;
+            }
+
+            return {
+              ...session,
+              scenes: session.scenes.map((scene) => {
+                if (scene.id !== sceneId) {
+                  return scene;
+                }
+                return {
+                  ...scene,
+                  choices: (scene.choices ?? []).filter((choice) => choice.id !== choiceId)
                 };
               }),
               updatedAt: timestamp
