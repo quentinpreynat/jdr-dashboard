@@ -902,12 +902,12 @@ export function SessionLivePage() {
                   scene.id === selectedSceneId
                     ? "border-amber-900/60 bg-amber-50"
                     : "border-amber-900/20 bg-white/90 hover:bg-amber-50"
-                }`}
+                } ${flashSceneId === scene.id ? "flash-ring" : ""}`}
               >
                 <div className="font-medium">{scene.title || `Scène ${scene.order}`}</div>
                 {(scene.liveNotes?.length ?? 0) > 0 && (
                   <div className="mt-1 text-xs text-amber-900/60">
-                    📝 Notes : {scene.liveNotes.length}
+                    📝 Notes : {scene.liveNotes?.length ?? 0}
                   </div>
                 )}
                 {(scene.linkedNpcIds?.length ?? 0) > 0 && (
