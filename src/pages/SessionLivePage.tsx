@@ -64,9 +64,10 @@ export function SessionLivePage() {
     data,
     addSceneLiveNote,
     removeSceneLiveNote,
-    addSceneChoice,
-    removeSceneChoice,
     updateScene,
+    createPlayerCharacter,
+    updatePlayerCharacter,
+    deletePlayerCharacter,
     findCampaignBySessionId
   } = useAppData();
   const containerRef = useRef<HTMLElement | null>(null);
@@ -90,16 +91,22 @@ export function SessionLivePage() {
   const [clockLabel, setClockLabel] = useState(() =>
     new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
   );
-  const [choiceLabel, setChoiceLabel] = useState("");
-  const [choiceTargetType, setChoiceTargetType] = useState<"place" | "npc" | "none">("none");
-  const [choiceTargetId, setChoiceTargetId] = useState<string>("");
-  const [choiceGotoSceneId, setChoiceGotoSceneId] = useState<string>("");
-  const [rightPanelTab, setRightPanelTab] = useState<"scenes" | "npcs" | "places" | null>(
+  const [rightPanelTab, setRightPanelTab] = useState<"scenes" | "npcs" | "places" | "pcs" | null>(
     null
   );
   const RIGHT_PANEL_COLLAPSED_PX = 70;
   const RIGHT_PANEL_EXPANDED_PX = 140;
+  const RIGHT_PANEL_PCS_PX = 360;
   const isRightPanelExpanded = rightPanelTab !== null;
+  const rightPanelWidth =
+    rightPanelTab === "pcs"
+      ? RIGHT_PANEL_PCS_PX
+      : isRightPanelExpanded
+        ? RIGHT_PANEL_EXPANDED_PX
+        : RIGHT_PANEL_COLLAPSED_PX;
+  const [selectedPcId, setSelectedPcId] = useState<string | null>(null);
+  const [pcConditionDraft, setPcConditionDraft] = useState("");
+  const [isCombatMode, setIsCombatMode] = useState(false);
   const [isDimMode] = useState(() => {
     try {
       return localStorage.getItem("tor-live-dim-enabled") === "true";
@@ -205,16 +212,15 @@ export function SessionLivePage() {
     }
     return ids;
   }, [session]);
-  const sessionNpcs = useMemo(() => {
+   const sessionNpcs = useMemo(() => {
     if (linkedNpcIds.size === 0) {
       return { list: data.npcs, hasFallback: true };
     }
     return { list: data.npcs.filter((npc) => linkedNpcIds.has(npc.id)), hasFallback: false };
   }, [data.npcs, linkedNpcIds]);
-  const choiceTargets = useMemo(
-    () => (choiceTargetType === "place" ? places : sessionNpcs.list),
-    [choiceTargetType, places, sessionNpcs.list]
-  );
+  const pcs = data.pcs ?? [];
+  const selectedPc = selectedPcId ? pcs.find((pc) => pc.id === selectedPcId) ?? null : null;
+  const [usedChoiceIds, setUsedChoiceIds] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     if (!selectedScene) {
@@ -228,16 +234,20 @@ export function SessionLivePage() {
       lastSceneIdRef.current = selectedScene.id;
     }
   }, [selectedScene, hasNext, orderedScenes, selectedIndex]);
-
+ 
   useEffect(() => {
-    if (choiceTargetType === "none" || choiceTargetId) {
+    if (!selectedPcId) {
       return;
     }
-    const first = choiceTargets[0]?.id ?? "";
-    if (first) {
-      setChoiceTargetId(first);
+    if (!pcs.some((pc) => pc.id === selectedPcId)) {
+      setSelectedPcId(null);
     }
-  }, [choiceTargetId, choiceTargets]);
+  }, [pcs, selectedPcId]);
+  
+  useEffect(() => {
+    setPcConditionDraft("");
+  }, [selectedPcId]);
+  
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -257,7 +267,7 @@ export function SessionLivePage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [hasPrev, hasNext, orderedScenes, selectedIndex]);
-
+  
   useEffect(() => {
     const el = containerRef.current;
     if (!el) {
@@ -430,11 +440,11 @@ export function SessionLivePage() {
           </Link>
         </div>
       </header>
-
+      
         <div
           className="live-layout mx-auto w-full max-w-[1200px] min-w-0 px-6"
           style={{
-            paddingRight: isRightPanelExpanded ? RIGHT_PANEL_EXPANDED_PX : RIGHT_PANEL_COLLAPSED_PX
+            paddingRight: rightPanelWidth
           }}
         >
           <div
@@ -464,17 +474,6 @@ export function SessionLivePage() {
                   </button>
                 )}
               </div>
-              {selectedScene && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => updateScene(sessionId, selectedScene.id, { done: !selectedScene.done })}
-                    className="btn btn-subtle"
-                  >
-                    {selectedScene.done ? "Marquer en cours" : "Marquer terminée"}
-                  </button>
-                </div>
-              )}
             </div>
 
             <div className="mt-4 flex min-h-0 flex-col gap-4 overflow-y-auto pr-1">
@@ -488,151 +487,97 @@ export function SessionLivePage() {
 
               <section className="rounded-lg border border-amber-900/10 bg-white/40 p-3 sm:p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/60">Choix</p>
-                <div className="mt-2 space-y-2">
-                  {(selectedScene?.choices ?? []).map((choice) => (
-                    <div key={choice.id} className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="flex-1 rounded-md border border-amber-900/10 bg-white/60 px-3 py-2 text-left text-sm hover:bg-amber-50/60"
-                        onClick={() => {
-                          if (choice.targetType === "place" && choice.targetId) {
-                            setQuickPlaceId(choice.targetId);
-                            setPanelMode("place");
-                          } else if (choice.targetType === "npc" && choice.targetId) {
-                            setQuickNpcId(choice.targetId);
-                            setPanelMode("npc");
-                          }
-                          if (choice.gotoSceneId) {
-                            setSelectedSceneId(choice.gotoSceneId);
-                            setFlashSceneId(choice.gotoSceneId);
-                            window.setTimeout(() => setFlashSceneId(null), 800);
-                          }
-                        }}
-                      >
-                        <span className="mr-2" aria-hidden="true">
-                          {choice.targetType === "place"
-                            ? "📍"
-                            : choice.targetType === "npc"
-                              ? "🎭"
-                              : "➜"}
-                        </span>
-                        {choice.label}
-                        {choice.gotoSceneId && <span className="ml-2 text-xs text-amber-900/60">➜</span>}
-                      </button>
+                {(() => {
+                  const choices = selectedScene?.choices ?? [];
+                  const count = choices.length;
+                  const gridClass =
+                    count <= 2
+                      ? "mt-4 grid gap-4 place-items-center sm:grid-cols-2"
+                      : count <= 4
+                        ? "mt-3 grid gap-3 sm:grid-cols-2"
+                        : count <= 6
+                          ? "mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
+                          : "mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3";
+                  const cardClass =
+                    count <= 2
+                      ? "min-h-[140px] text-[17px] px-6 py-6"
+                      : count <= 4
+                        ? "min-h-[120px] text-base px-5 py-5"
+                        : count <= 6
+                          ? "min-h-[104px] text-sm px-4 py-4"
+                          : "min-h-[92px] text-sm px-3 py-3";
+                  const innerClass =
+                    count <= 2
+                      ? "gap-3"
+                      : count <= 4
+                        ? "gap-2"
+                        : "gap-1.5";
+                  return (
+                    <div className={gridClass}>
+                      {choices.map((choice) => {
+                        const hasLinkedScene =
+                          choice.targetType === "place" &&
+                          orderedScenes.some(
+                            (scene) => scene.id !== selectedScene?.id && scene.placeId === choice.targetId
+                          );
+                        const usedIds = usedChoiceIds[selectedScene?.id ?? ""] ?? [];
+                        const isUsed = usedIds.includes(choice.id);
+                        return (
+                          <button
+                            key={choice.id}
+                            type="button"
+                            className={`group relative flex w-full items-center justify-center rounded-[10px] border border-amber-900/30 bg-[#F2E3C6] text-center font-medium text-amber-950/90 shadow-[0_6px_14px_rgba(67,41,21,0.12)] transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_10px_18px_rgba(67,41,21,0.18)] ${cardClass} ${
+                              isUsed ? "opacity-75 text-amber-950/60" : ""
+                            }`}
+                            onClick={() => {
+                              if (choice.targetType === "place") {
+                                setQuickPlaceId(choice.targetId);
+                                setPanelMode("place");
+                              } else if (choice.targetType === "npc") {
+                                setQuickNpcId(choice.targetId);
+                                setPanelMode("npc");
+                              }
+                              if (selectedScene) {
+                                setUsedChoiceIds((prev) => {
+                                  const sceneKey = selectedScene.id;
+                                  const next = new Set(prev[sceneKey] ?? []);
+                                  next.add(choice.id);
+                                  return { ...prev, [sceneKey]: Array.from(next) };
+                                });
+                              }
+                            }}
+                          >
+                            <span className="absolute inset-0 rounded-[10px] opacity-[0.25] mix-blend-multiply [background-image:repeating-linear-gradient(45deg,rgba(120,74,32,0.06)_0px,rgba(120,74,32,0.06)_1px,transparent_1px,transparent_6px)]" />
+                            <span className={`relative flex flex-col items-center justify-center ${innerClass}`}>
+                              <span className="text-sm text-amber-900/70" aria-hidden="true">
+                                {choice.targetType === "place" ? "📍" : "🎭"}
+                              </span>
+                              <span className="max-w-full text-center leading-snug tracking-wide">
+                                {choice.label}
+                              </span>
+                              {hasLinkedScene && (
+                                <span className="text-xs text-amber-900/60">➜</span>
+                              )}
+                            </span>
+                            {isUsed && (
+                              <span className="absolute bottom-2 right-2 text-[10px] font-semibold text-amber-900/50">
+                                ✓
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
 
-                      <button
-                        type="button"
-                        className="btn btn-subtle text-xs"
-                        onClick={() => {
-                          if (!sessionId || !selectedScene) {
-                            return;
-                          }
-                          const ok = window.confirm("Supprimer ce choix ?");
-                          if (!ok) {
-                            return;
-                          }
-                          removeSceneChoice(sessionId, selectedScene.id, choice.id);
-                        }}
-                      >
-                        ✕
-                      </button>
+                      {(selectedScene?.choices?.length ?? 0) === 0 && (
+                        <p className="rounded-md border border-amber-900/10 bg-white/50 px-3 py-2 text-sm live-muted">
+                          Aucun choix défini.
+                        </p>
+                      )}
                     </div>
-                  ))}
-
-                  {(selectedScene?.choices?.length ?? 0) === 0 && (
-                    <p className="rounded-md border border-amber-900/10 bg-white/50 px-3 py-2 text-sm live-muted">
-                      Aucun choix défini.
-                    </p>
-                  )}
-                </div>
-
-                <div className="mt-3 space-y-2">
-                  <input
-                    value={choiceLabel}
-                    onChange={(event) => setChoiceLabel(event.target.value)}
-                    placeholder="Ex : Aller à la taverne / Parler au forgeron..."
-                    className="live-input min-h-10 w-full rounded-md px-3 py-2 text-sm"
-                  />
-
-                  <div className="flex gap-2">
-                    <select
-                      value={choiceTargetType}
-                      onChange={(event) => {
-                        const nextType = event.target.value as "place" | "npc";
-                        setChoiceTargetType(nextType);
-                        setChoiceTargetId("");
-                      }}
-                      className="live-input min-h-10 w-28 rounded-md px-2 py-2 text-sm"
-                    >
-                      <option value="none">Aucun</option>
-                      <option value="place">Lieu</option>
-                      <option value="npc">PNJ</option>
-                    </select>
-
-                    <select
-                      value={choiceTargetId}
-                      onChange={(event) => setChoiceTargetId(event.target.value)}
-                      className="live-input min-h-10 flex-1 rounded-md px-2 py-2 text-sm"
-                    >
-                      {choiceTargetType === "none" && <option value="">Aucune cible</option>}
-                      {choiceTargetType === "place" &&
-                        (places.length > 0 ? (
-                          places.map((place) => (
-                            <option key={place.id} value={place.id}>
-                              {place.name || "Lieu sans nom"}
-                            </option>
-                          ))
-                        ) : (
-                          <option value="">Aucun lieu</option>
-                        ))}
-                      {choiceTargetType === "npc" &&
-                        (sessionNpcs.list.length > 0 ? (
-                          sessionNpcs.list.map((npc) => (
-                            <option key={npc.id} value={npc.id}>
-                              {npc.name || "PNJ sans nom"}
-                            </option>
-                          ))
-                        ) : (
-                          <option value="">Aucun PNJ</option>
-                        ))}
-                    </select>
-
-                    <select
-                      value={choiceGotoSceneId}
-                      onChange={(event) => setChoiceGotoSceneId(event.target.value)}
-                      className="live-input min-h-10 flex-1 rounded-md px-2 py-2 text-sm"
-                    >
-                      <option value="">(Aucune)</option>
-                      {orderedScenes.map((scene) => (
-                        <option key={scene.id} value={scene.id}>
-                          {scene.title?.trim() || `Scène ${scene.order}`}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      disabled={choiceTargetType !== "none" && !choiceTargetId}
-                      onClick={() => {
-                        if (!sessionId || !selectedScene) {
-                          return;
-                        }
-                        addSceneChoice(sessionId, selectedScene.id, {
-                          label: choiceLabel,
-                          targetType: choiceTargetType,
-                          targetId: choiceTargetId || undefined,
-                          gotoSceneId: choiceGotoSceneId || undefined
-                        });
-                        setChoiceLabel("");
-                      }}
-                    >
-                      Ajouter
-                    </button>
-                  </div>
-                </div>
+                  );
+                })()}
               </section>
-
+              
               <div className="grid gap-3 lg:grid-cols-2">
                 <section className="rounded-lg border border-amber-900/10 bg-white/40 p-3 sm:p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/60">
@@ -719,6 +664,7 @@ export function SessionLivePage() {
                           Supprimer
                         </button>
                       </div>
+
                     ))}
                     {(selectedScene?.liveNotes?.length ?? 0) === 0 && (
                       <p className="rounded-md border border-amber-900/10 bg-white/50 px-3 py-2 text-sm live-muted">
@@ -770,11 +716,10 @@ export function SessionLivePage() {
           </div>
         </div>
       </div>
-
       <div
         className="fixed right-0 top-[72px] z-40 h-[calc(100vh-72px)] border-l border-amber-900/20 bg-[#E7D8BF]/70 backdrop-blur-sm flex flex-col p-3"
         style={{
-          width: isRightPanelExpanded ? RIGHT_PANEL_EXPANDED_PX : RIGHT_PANEL_COLLAPSED_PX,
+          width: rightPanelWidth,
           transition: "width 240ms ease"
         }}
       >
@@ -782,6 +727,8 @@ export function SessionLivePage() {
           <button
             type="button"
             onClick={() => setRightPanelTab((prev) => (prev === "scenes" ? null : "scenes"))}
+            aria-expanded={rightPanelTab === "scenes"}
+            aria-controls="right-panel-scenes"
             className={`relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
               rightPanelTab === "scenes"
                 ? "border-amber-900/60 bg-amber-50"
@@ -817,7 +764,47 @@ export function SessionLivePage() {
           </button>
           <button
             type="button"
+            onClick={() => setRightPanelTab((prev) => (prev === "pcs" ? null : "pcs"))}
+            aria-expanded={rightPanelTab === "pcs"}
+            aria-controls="right-panel-pcs"
+            className={`relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
+              rightPanelTab === "pcs"
+                ? "border-amber-900/60 bg-amber-50"
+                : "border-amber-900/20 bg-[#F2E7D4] hover:bg-amber-50"
+            }`}
+          >
+            {rightPanelTab === "pcs" && (
+              <span aria-hidden="true" className="absolute top-1 right-1">
+                <span
+                  className="absolute inset-0 rounded-full bg-amber-500/30 animate-ping"
+                  style={{ animationDuration: "1.6s" }}
+                />
+                <span
+                  className="relative block h-2.5 w-2.5 rounded-full bg-amber-700 ring-2 ring-amber-300/60 shadow-[0_0_6px_rgba(180,83,9,0.35)]"
+                />
+              </span>
+            )}
+            <span className="flex w-full flex-col items-center justify-center gap-1">
+              <span aria-hidden="true" className="text-base">
+                🧝
+              </span>
+              {!isRightPanelExpanded && (
+                <span className="text-[10px] font-semibold tracking-wide text-amber-900/70">
+                  PJ
+                </span>
+              )}
+              {isRightPanelExpanded && (
+                <span className="w-full truncate text-left text-xs font-medium text-amber-950/80">
+                  PJ
+                </span>
+              )}
+            </span>
+          </button>
+          <button
+            type="button"
             onClick={() => setRightPanelTab((prev) => (prev === "npcs" ? null : "npcs"))}
+            aria-expanded={rightPanelTab === "npcs"}
+            aria-controls="right-panel-npcs"
             className={`relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
               rightPanelTab === "npcs"
                 ? "border-amber-900/60 bg-amber-50"
@@ -854,6 +841,8 @@ export function SessionLivePage() {
           <button
             type="button"
             onClick={() => setRightPanelTab((prev) => (prev === "places" ? null : "places"))}
+            aria-expanded={rightPanelTab === "places"}
+            aria-controls="right-panel-places"
             className={`relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
               rightPanelTab === "places"
                 ? "border-amber-900/60 bg-amber-50"
@@ -888,11 +877,22 @@ export function SessionLivePage() {
             </span>
           </button>
         </div>
-        {rightPanelTab === "scenes" && (
-          <div
-            className="mt-3 space-y-2 overflow-y-auto pr-1"
-            style={{ maxHeight: "calc(100vh - 72px - 140px)" }}
-          >
+        <div
+          id="right-panel-scenes"
+          role="region"
+          aria-hidden={rightPanelTab !== "scenes"}
+          className={`relative mt-3 origin-top overflow-hidden pr-1 transition duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none ${
+            rightPanelTab === "scenes"
+              ? "pointer-events-auto scale-y-100 opacity-100 translate-y-0"
+              : "pointer-events-none scale-y-0 opacity-0 -translate-y-1"
+          }`}
+          style={{
+            maxHeight: rightPanelTab === "scenes" ? "calc(100vh - 72px - 140px)" : 0,
+            boxShadow: rightPanelTab === "scenes" ? "0 8px 24px rgba(30,20,10,0.12)" : "none"
+          }}
+        >
+          <span className="pointer-events-none absolute left-0 top-0 h-full w-2 bg-amber-900/10" />
+          <div className="space-y-2 py-2">
             {orderedScenes.map((scene) => (
               <button
                 key={scene.id}
@@ -918,12 +918,311 @@ export function SessionLivePage() {
               </button>
             ))}
           </div>
-        )}
-        {rightPanelTab === "npcs" && (
-          <div
-            className="mt-3 space-y-2 overflow-y-auto pr-1"
-            style={{ maxHeight: "calc(100vh - 72px - 140px)" }}
-          >
+        </div>
+        <div
+          id="right-panel-pcs"
+          role="region"
+          aria-hidden={rightPanelTab !== "pcs"}
+          className={`relative mt-3 origin-top overflow-hidden transition duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none ${
+            rightPanelTab === "pcs"
+              ? "pointer-events-auto scale-y-100 opacity-100 translate-y-0"
+              : "pointer-events-none scale-y-0 opacity-0 -translate-y-1"
+          }`}
+          style={{
+            maxHeight: rightPanelTab === "pcs" ? "calc(100vh - 72px - 140px)" : 0,
+            boxShadow: rightPanelTab === "pcs" ? "0 8px 24px rgba(30,20,10,0.12)" : "none"
+          }}
+        >
+          <span className="pointer-events-none absolute left-0 top-0 h-full w-2 bg-amber-900/10" />
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden py-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/60">
+                Registre des PJ
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newId = createPlayerCharacter();
+                    setSelectedPcId(newId);
+                  }}
+                  className="btn btn-subtle px-2 text-xs"
+                >
+                  + PJ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCombatMode((prev) => !prev)}
+                  className={`btn btn-subtle px-2 text-xs ${isCombatMode ? "btn-active" : ""}`}
+                >
+                  ⚔️
+                </button>
+              </div>
+            </div>
+            <div className="relative flex-1 overflow-y-auto pr-1">
+              <div className="relative rounded-xl border border-amber-900/20 bg-[#F2E3C6] p-3 shadow-[0_8px_18px_rgba(62,38,19,0.12)]">
+                <div className="pointer-events-none absolute inset-y-3 left-1/2 hidden w-px -translate-x-1/2 bg-amber-900/15 lg:block" />
+                <div
+                  className={`grid gap-3 ${
+                    isCombatMode ? "sm:grid-cols-2 lg:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3"
+                  }`}
+                >
+                  {pcs.map((pc) => {
+                    const hpMax = Math.max(0, pc.hpMax);
+                    const hpCurrent = Math.max(0, Math.min(pc.hpCurrent, hpMax || pc.hpCurrent));
+                    const hpRatio = hpMax > 0 ? hpCurrent / hpMax : 0;
+                    const isLow = hpMax > 0 && hpRatio < 0.3;
+                    return (
+                      <button
+                        key={pc.id}
+                        type="button"
+                        onClick={() => setSelectedPcId(pc.id)}
+                        className={`text-left rounded-lg border border-amber-900/20 bg-white/70 px-3 py-3 shadow-[0_4px_10px_rgba(62,38,19,0.12)] transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_8px_14px_rgba(62,38,19,0.18)] ${
+                          selectedPcId === pc.id ? "ring-1 ring-amber-500/40" : ""
+                        } ${isCombatMode ? "px-2 py-2" : ""}`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-amber-950/90">{pc.name}</p>
+                            <p className="text-xs text-amber-900/70">{pc.role || "Sans rôle"}</p>
+                          </div>
+                          <span className="text-[10px] text-amber-900/60">🧝</span>
+                        </div>
+                        <div className="mt-2">
+                          <div className="flex items-center justify-between text-xs text-amber-950/80">
+                            <span className={isLow ? "text-amber-900/80" : ""}>PV</span>
+                            <span className={isLow ? "text-amber-900/90" : ""}>
+                              {hpCurrent} / {hpMax || "—"}
+                            </span>
+                          </div>
+                          <div
+                            className={`mt-1 w-full rounded-full bg-amber-900/10 ${
+                              isCombatMode ? "h-2.5" : "h-1.5"
+                            }`}
+                          >
+                            <div
+                              className={`h-full rounded-full ${
+                                isLow ? "bg-amber-900/50" : "bg-amber-800/40"
+                              }`}
+                              style={{ width: `${Math.min(100, Math.max(0, hpRatio * 100))}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div
+                          className={`mt-2 flex flex-wrap gap-1 text-[10px] ${
+                            isCombatMode ? "text-amber-900/80" : "text-amber-900/70 min-h-[18px]"
+                          }`}
+                        >
+                          {pc.conditions.map((condition) => (
+                            <span
+                              key={condition}
+                              className="rounded-full border border-amber-900/20 bg-amber-50/60 px-2 py-0.5"
+                            >
+                              {condition}
+                            </span>
+                          ))}
+                          {pc.conditions.length === 0 && !isCombatMode && (
+                            <span className="text-amber-900/40">Aucun état</span>
+                          )}
+                        </div>
+                        <div className="mt-2 grid grid-cols-4 gap-2 text-[10px] text-amber-900/80">
+                          {[
+                            { key: "for", label: "FOR" },
+                            { key: "dex", label: "DEX" },
+                            { key: "int", label: "INT" },
+                            { key: "con", label: "CON" }
+                          ].map((stat) => (
+                            <div key={stat.key} className="flex flex-col items-center">
+                              <span className="font-semibold">{stat.label}</span>
+                              <span>{pc.stats[stat.key as keyof typeof pc.stats]}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {pcs.length === 0 && (
+                    <p className="col-span-full rounded-md border border-amber-900/10 bg-white/70 px-3 py-2 text-sm text-amber-900/70">
+                      Aucun PJ enregistré.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+            {selectedPc && (
+              <div className="rounded-xl border border-amber-900/20 bg-[#F2E3C6] p-3 shadow-[0_6px_14px_rgba(62,38,19,0.14)] transition-all duration-200">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-amber-900/60">Fiche PJ</p>
+                    <p className="text-sm font-semibold text-amber-950/90">{selectedPc.name}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPcId(null)}
+                    className="btn btn-subtle px-2 text-xs"
+                  >
+                    Fermer
+                  </button>
+                </div>
+                <div className="mt-3 space-y-2">
+                  <input
+                    value={selectedPc.name}
+                    onChange={(event) => updatePlayerCharacter(selectedPc.id, { name: event.target.value })}
+                    className="w-full rounded-md border border-amber-900/20 bg-white/70 px-3 py-2 text-sm"
+                    placeholder="Nom du PJ"
+                  />
+                  <input
+                    value={selectedPc.role}
+                    onChange={(event) => updatePlayerCharacter(selectedPc.id, { role: event.target.value })}
+                    className="w-full rounded-md border border-amber-900/20 bg-white/70 px-3 py-2 text-sm"
+                    placeholder="Classe / rôle"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updatePlayerCharacter(selectedPc.id, {
+                          hpCurrent: Math.max(0, selectedPc.hpCurrent - 1)
+                        })
+                      }
+                      className="btn btn-subtle px-2 text-xs"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      value={selectedPc.hpCurrent}
+                      onChange={(event) =>
+                        updatePlayerCharacter(selectedPc.id, { hpCurrent: Number(event.target.value) })
+                      }
+                      className="w-20 rounded-md border border-amber-900/20 bg-white/70 px-2 py-1 text-sm"
+                    />
+                    <span className="text-xs text-amber-900/70">/</span>
+                    <input
+                      type="number"
+                      value={selectedPc.hpMax}
+                      onChange={(event) =>
+                        updatePlayerCharacter(selectedPc.id, { hpMax: Number(event.target.value) })
+                      }
+                      className="w-20 rounded-md border border-amber-900/20 bg-white/70 px-2 py-1 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updatePlayerCharacter(selectedPc.id, {
+                          hpCurrent: Math.min(selectedPc.hpMax, selectedPc.hpCurrent + 1)
+                        })
+                      }
+                      className="btn btn-subtle px-2 text-xs"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {([
+                      { key: "for", label: "FOR" },
+                      { key: "dex", label: "DEX" },
+                      { key: "int", label: "INT" },
+                      { key: "con", label: "CON" }
+                    ] as const).map((stat) => (
+                      <label key={stat.key} className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-amber-900/70">{stat.label}</span>
+                        <input
+                          type="number"
+                          value={selectedPc.stats[stat.key]}
+                          onChange={(event) =>
+                            updatePlayerCharacter(selectedPc.id, {
+                              stats: {
+                                ...selectedPc.stats,
+                                [stat.key]: Number(event.target.value)
+                              }
+                            })
+                          }
+                          className="w-16 rounded-md border border-amber-900/20 bg-white/70 px-2 py-1 text-xs"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      {selectedPc.conditions.map((condition) => (
+                        <button
+                          key={condition}
+                          type="button"
+                          onClick={() =>
+                            updatePlayerCharacter(selectedPc.id, {
+                              conditions: selectedPc.conditions.filter((entry) => entry !== condition)
+                            })
+                          }
+                          className="rounded-full border border-amber-900/20 bg-amber-50/60 px-2 py-1 text-amber-900/70"
+                        >
+                          {condition} ✕
+                        </button>
+                      ))}
+                      {selectedPc.conditions.length === 0 && (
+                        <span className="text-amber-900/40">Aucun état</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        value={pcConditionDraft}
+                        onChange={(event) => setPcConditionDraft(event.target.value)}
+                        placeholder="Ajouter un état..."
+                        className="flex-1 rounded-md border border-amber-900/20 bg-white/70 px-2 py-1 text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const trimmed = pcConditionDraft.trim();
+                          if (!trimmed) {
+                            return;
+                          }
+                          updatePlayerCharacter(selectedPc.id, {
+                            conditions: Array.from(new Set([...selectedPc.conditions, trimmed]))
+                          });
+                          setPcConditionDraft("");
+                        }}
+                        className="btn btn-subtle px-2 text-xs"
+                      >
+                        Ajouter
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const confirmed = window.confirm("Supprimer ce PJ ?");
+                      if (!confirmed) {
+                        return;
+                      }
+                      deletePlayerCharacter(selectedPc.id);
+                      setSelectedPcId(null);
+                    }}
+                    className="btn btn-danger text-xs"
+                  >
+                    Supprimer le PJ
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        <div
+          id="right-panel-npcs"
+          role="region"
+          aria-hidden={rightPanelTab !== "npcs"}
+          className={`relative mt-3 origin-top overflow-hidden pr-1 transition duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none ${
+            rightPanelTab === "npcs"
+              ? "pointer-events-auto scale-y-100 opacity-100 translate-y-0"
+              : "pointer-events-none scale-y-0 opacity-0 -translate-y-1"
+          }`}
+          style={{
+            maxHeight: rightPanelTab === "npcs" ? "calc(100vh - 72px - 140px)" : 0,
+            boxShadow: rightPanelTab === "npcs" ? "0 8px 24px rgba(30,20,10,0.12)" : "none"
+          }}
+        >
+          <span className="pointer-events-none absolute left-0 top-0 h-full w-2 bg-amber-900/10" />
+          <div className="space-y-2 py-2">
             {sessionNpcs.list.map((npc) => (
               <button
                 key={npc.id}
@@ -941,12 +1240,23 @@ export function SessionLivePage() {
               </button>
             ))}
           </div>
-        )}
-        {rightPanelTab === "places" && (
-          <div
-            className="mt-3 space-y-2 overflow-y-auto pr-1"
-            style={{ maxHeight: "calc(100vh - 72px - 140px)" }}
-          >
+        </div>
+        <div
+          id="right-panel-places"
+          role="region"
+          aria-hidden={rightPanelTab !== "places"}
+          className={`relative mt-3 origin-top overflow-hidden pr-1 transition duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none ${
+            rightPanelTab === "places"
+              ? "pointer-events-auto scale-y-100 opacity-100 translate-y-0"
+              : "pointer-events-none scale-y-0 opacity-0 -translate-y-1"
+          }`}
+          style={{
+            maxHeight: rightPanelTab === "places" ? "calc(100vh - 72px - 140px)" : 0,
+            boxShadow: rightPanelTab === "places" ? "0 8px 24px rgba(30,20,10,0.12)" : "none"
+          }}
+        >
+          <span className="pointer-events-none absolute left-0 top-0 h-full w-2 bg-amber-900/10" />
+          <div className="space-y-2 py-2">
             {places.map((place) => (
               <button
                 key={place.id}
@@ -965,9 +1275,8 @@ export function SessionLivePage() {
               <p className="text-xs text-amber-900/60">Aucun lieu disponible.</p>
             )}
           </div>
-        )}
+        </div>
       </div>
-
       <>
         <div
           className="fixed top-[72px] left-0 right-0 bottom-0 z-40 bg-black/25 backdrop-blur-sm transition-opacity duration-300 motion-reduce:transition-none"
@@ -979,7 +1288,6 @@ export function SessionLivePage() {
           }}
           aria-hidden="true"
         />
-
         <aside
           className={`fixed inset-y-0 right-0 z-50 overflow-hidden bg-[#F2E7D4] border-l border-amber-900/20 shadow-2xl
         transform transition-transform duration-300 ease-in-out motion-reduce:transition-none motion-reduce:transform-none
@@ -1034,7 +1342,6 @@ export function SessionLivePage() {
                     </div>
                   </div>
                 </div>
-
               {panelMode === "search" ? (
                 <div className="space-y-4">
                   <div className="space-y-3">
@@ -1065,7 +1372,6 @@ export function SessionLivePage() {
                       ))}
                     </div>
                   </div>
-
                   <div className="space-y-4">
                     {searchScope === "places" && places.length === 0 && (
                       <p className="text-sm text-amber-950/70">Aucun lieu disponible dans la campagne.</p>
@@ -1075,7 +1381,6 @@ export function SessionLivePage() {
                         Saisissez une recherche pour afficher les résultats.
                       </p>
                     )}
-
                     {debouncedQuery.trim() !== "" &&
                       (searchScope === "all" || searchScope === "scenes") &&
                       searchResults.scenes.length > 0 && (
@@ -1099,7 +1404,6 @@ export function SessionLivePage() {
                           </ul>
                         </div>
                       )}
-
                     {debouncedQuery.trim() !== "" &&
                       (searchScope === "all" || searchScope === "npcs") &&
                       searchResults.npcs.length > 0 && (
@@ -1127,7 +1431,6 @@ export function SessionLivePage() {
                           </ul>
                         </div>
                       )}
-
                     {debouncedQuery.trim() !== "" &&
                       (searchScope === "all" || searchScope === "places") &&
                       searchResults.places.length > 0 && (
@@ -1157,7 +1460,6 @@ export function SessionLivePage() {
                           </ul>
                         </div>
                       )}
-
                     {debouncedQuery.trim() !== "" &&
                       searchResults.scenes.length === 0 &&
                       searchResults.npcs.length === 0 &&

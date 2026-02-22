@@ -4,7 +4,7 @@ import { addSnapshot, db, pruneSnapshots } from "../lib/db";
 import { createId } from "../lib/id";
 import { migrateIfNeeded } from "../lib/migrateFromLocalStorage";
 import { createLocalStorageStore } from "../lib/storage";
-import type { AppData, Campaign, Npc, Place, Scene, Session } from "../models";
+import type { AppData, Campaign, Npc, Place, PlayerCharacter, Scene, Session } from "../models";
 
 interface AppDataContextValue {
   data: AppData;
@@ -25,7 +25,7 @@ interface AppDataContextValue {
   addSceneChoice(
     sessionId: string,
     sceneId: string,
-    choice: { label: string; targetType: "place" | "npc" | "none"; targetId?: string; gotoSceneId?: string }
+    choice: { label: string; targetType: "place" | "npc"; targetId: string }
   ): void;
   removeSceneChoice(sessionId: string, sceneId: string, choiceId: string): void;
   deleteScene(sessionId: string, sceneId: string): void;
@@ -34,6 +34,9 @@ interface AppDataContextValue {
   createNpc(): string;
   deleteNpc(npcId: string): void;
   updateNpc(npcId: string, fields: Partial<Omit<Npc, "id">>): void;
+  createPlayerCharacter(): string;
+  deletePlayerCharacter(pcId: string): void;
+  updatePlayerCharacter(pcId: string, fields: Partial<Omit<PlayerCharacter, "id">>): void;
   resetDemoData(): void;
   replaceData(raw: unknown): { ok: boolean; error?: string };
 }
@@ -103,6 +106,20 @@ function ensureNpcTimestamps(npc: Npc): Npc {
   };
 }
 
+function ensurePlayerCharacter(pc: PlayerCharacter): PlayerCharacter {
+  const fallback = nowIso();
+  return {
+    ...pc,
+    role: pc.role ?? "",
+    hpCurrent: typeof pc.hpCurrent === "number" ? pc.hpCurrent : 0,
+    hpMax: typeof pc.hpMax === "number" ? pc.hpMax : 0,
+    stats: pc.stats ?? { for: 0, dex: 0, int: 0, con: 0 },
+    conditions: pc.conditions ?? [],
+    createdAt: ensureTimestamp(pc.createdAt, fallback),
+    updatedAt: ensureTimestamp(pc.updatedAt, fallback)
+  };
+}
+
 function ensureAppData(data: AppData): AppData {
   const { timelineItems: _legacyTimelineItems, ...campaign } = data.campaign as Campaign & {
     timelineItems?: unknown;
@@ -111,7 +128,8 @@ function ensureAppData(data: AppData): AppData {
     ...data,
     campaign: ensureCampaignTimestamps(campaign),
     sessions: data.sessions.map(ensureSessionTimestamps),
-    npcs: data.npcs.map(ensureNpcTimestamps)
+    npcs: data.npcs.map(ensureNpcTimestamps),
+    pcs: (data.pcs ?? []).map(ensurePlayerCharacter)
   };
   const withTimeline = {
     ...normalized,
@@ -145,20 +163,18 @@ function isLiveNote(value: unknown): value is { id: string; text: string; create
 
 function isSceneChoice(
   value: unknown
-): value is { id: string; label: string; targetType: "place" | "npc" | "none"; targetId?: string; gotoSceneId?: string } {
+): value is { id: string; label: string; targetType: "place" | "npc"; targetId: string } {
   if (!isRecord(value)) {
     return false;
   }
   const targetType = value.targetType;
-  const validTargetType = targetType === "place" || targetType === "npc" || targetType === "none";
+  const validTargetType = targetType === "place" || targetType === "npc";
   const targetId = value.targetId;
-  const gotoSceneId = value.gotoSceneId;
   return (
     typeof value.id === "string" &&
     typeof value.label === "string" &&
     validTargetType &&
-    (targetId === undefined || typeof targetId === "string") &&
-    (gotoSceneId === undefined || typeof gotoSceneId === "string")
+    typeof targetId === "string"
   );
 }
 
@@ -221,6 +237,36 @@ function isNpc(value: unknown): value is Npc {
   );
 }
 
+function isPlayerStats(value: unknown): value is { for: number; dex: number; int: number; con: number } {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    typeof value.for === "number" &&
+    typeof value.dex === "number" &&
+    typeof value.int === "number" &&
+    typeof value.con === "number"
+  );
+}
+
+function isPlayerCharacter(value: unknown): value is PlayerCharacter {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    typeof value.id === "string" &&
+    typeof value.name === "string" &&
+    typeof value.role === "string" &&
+    typeof value.hpCurrent === "number" &&
+    typeof value.hpMax === "number" &&
+    isPlayerStats(value.stats) &&
+    Array.isArray(value.conditions) &&
+    value.conditions.every((entry) => typeof entry === "string") &&
+    typeof value.createdAt === "string" &&
+    typeof value.updatedAt === "string"
+  );
+}
+
 function isPlace(value: unknown): value is Place {
   if (!isRecord(value)) {
     return false;
@@ -255,7 +301,9 @@ function isAppData(value: unknown): value is AppData {
     Array.isArray(value.sessions) &&
     value.sessions.every(isSession) &&
     Array.isArray(value.npcs) &&
-    value.npcs.every(isNpc)
+    value.npcs.every(isNpc) &&
+    (value.pcs === undefined ||
+      (Array.isArray(value.pcs) && value.pcs.every(isPlayerCharacter)))
   );
 }
 
@@ -554,7 +602,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (!trimmedLabel) {
           return;
         }
-        if (choice.targetType !== "none" && !choice.targetId) {
+        if (!choice.targetId) {
           return;
         }
         const timestamp = nowIso();
@@ -578,8 +626,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
                     id: choiceId,
                     label: trimmedLabel,
                     targetType: choice.targetType,
-                    targetId: choice.targetType === "none" ? undefined : choice.targetId,
-                    gotoSceneId: choice.gotoSceneId || undefined
+                    targetId: choice.targetId
                   }
                 ];
                 return { ...scene, choices: nextChoices };
@@ -697,6 +744,48 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           ...prev,
           npcs: prev.npcs.map((npc) =>
             npc.id === npcId ? { ...npc, ...fields, updatedAt: timestamp } : npc
+          )
+        }));
+      },
+      createPlayerCharacter() {
+        const timestamp = nowIso();
+        const pcId = createId("pc");
+        setData((prev) => ({
+          ...prev,
+          pcs: [
+            ...(prev.pcs ?? []),
+            {
+              id: pcId,
+              name: "Nouveau PJ",
+              role: "",
+              hpCurrent: 10,
+              hpMax: 10,
+              stats: { for: 10, dex: 10, int: 10, con: 10 },
+              conditions: [],
+              createdAt: timestamp,
+              updatedAt: timestamp
+            }
+          ]
+        }));
+        return pcId;
+      },
+      deletePlayerCharacter(pcId) {
+        const timestamp = nowIso();
+        setData((prev) => ({
+          ...prev,
+          pcs: (prev.pcs ?? []).filter((pc) => pc.id !== pcId),
+          sessions: prev.sessions.map((session) => ({
+            ...session,
+            updatedAt: timestamp
+          }))
+        }));
+      },
+      updatePlayerCharacter(pcId, fields) {
+        const timestamp = nowIso();
+        setData((prev) => ({
+          ...prev,
+          pcs: (prev.pcs ?? []).map((pc) =>
+            pc.id === pcId ? { ...pc, ...fields, updatedAt: timestamp } : pc
           )
         }));
       },

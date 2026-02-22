@@ -22,14 +22,13 @@ export interface LiveNote {
   createdFromSceneId?: string;
 }
 
-export type SceneChoiceTargetType = "place" | "npc" | "none";
+export type SceneChoiceTargetType = "place" | "npc";
 
 export interface SceneChoice {
   id: string;
   label: string;
   targetType: SceneChoiceTargetType;
-  targetId?: string;
-  gotoSceneId?: string;
+  targetId: string;
 }
 
 export interface Scene {
@@ -71,8 +70,28 @@ export interface Npc {
   updatedAt: string;
 }
 
+export interface PlayerStats {
+  for: number;
+  dex: number;
+  int: number;
+  con: number;
+}
+
+export interface PlayerCharacter {
+  id: string;
+  name: string;
+  role: string;
+  hpCurrent: number;
+  hpMax: number;
+  stats: PlayerStats;
+  conditions: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AppData {
   campaign: Campaign;
   sessions: Session[];
   npcs: Npc[];
+  pcs: PlayerCharacter[];
 }

@@ -114,6 +114,30 @@ export const DEMO_DATA: AppData = {
       createdAt: "2026-02-04T18:30:00.000Z",
       updatedAt: "2026-02-14T11:40:00.000Z"
     }
+  ],
+  pcs: [
+    {
+      id: "pc_1",
+      name: "Lyra",
+      role: "Éclaireuse",
+      hpCurrent: 18,
+      hpMax: 24,
+      stats: { for: 11, dex: 16, int: 12, con: 13 },
+      conditions: ["Fatigué"],
+      createdAt: "2026-02-06T09:00:00.000Z",
+      updatedAt: "2026-02-15T19:10:00.000Z"
+    },
+    {
+      id: "pc_2",
+      name: "Kael",
+      role: "Garde",
+      hpCurrent: 22,
+      hpMax: 30,
+      stats: { for: 15, dex: 12, int: 10, con: 14 },
+      conditions: [],
+      createdAt: "2026-02-06T09:05:00.000Z",
+      updatedAt: "2026-02-15T19:12:00.000Z"
+    }
   ]
 };
 
