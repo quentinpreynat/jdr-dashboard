@@ -1,4 +1,4 @@
-import {
+﻿import {
   createContext,
   useContext,
   useEffect,
@@ -44,7 +44,7 @@ interface AppDataContextValue {
   updateScene(
     sessionId: string,
     sceneId: string,
-    fields: Partial<Omit<Scene, "id" | "order">>,
+    fields: Partial<Omit<Scene, "id">>,
   ): void;
   addSceneLiveNote(
     sessionId: string,
@@ -60,7 +60,6 @@ interface AppDataContextValue {
   ): void;
   removeSceneChoice(sessionId: string, sceneId: string, choiceId: string): void;
   deleteScene(sessionId: string, sceneId: string): void;
-  moveScene(sessionId: string, sceneId: string, direction: "up" | "down"): void;
   setSceneNpcLink(
     sessionId: string,
     sceneId: string,
@@ -80,15 +79,8 @@ interface AppDataContextValue {
   replaceData(raw: unknown): { ok: boolean; error?: string };
 }
 
-const AppDataContext = createContext<AppDataContextValue | undefined>(
-  undefined,
-);
+const AppDataContext = createContext<AppDataContextValue | undefined>(undefined);
 const store = createLocalStorageStore();
-
-function moveToSequentialOrder<T extends { order: number }>(items: T[]): T[] {
-  // Keep order values dense after deletions so list numbering stays simple.
-  return items.map((item, index) => ({ ...item, order: index + 1 }));
-}
 
 function uniqueIds(ids: string[]): string[] {
   return Array.from(new Set(ids));
@@ -120,19 +112,24 @@ function ensureSessionTimestamps(session: Session): Session {
   const fallback = nowIso();
   return {
     ...session,
-    scenes: session.scenes.map((scene) => ({
-      ...scene,
-      linkedNpcIds: scene.linkedNpcIds ?? [],
-      done: scene.done ?? false,
-      choices: scene.choices ?? [],
-      liveNotes: (scene.liveNotes ?? []).map((note) => ({
-        ...note,
-        createdAt:
-          typeof note.createdAt === "number"
-            ? note.createdAt
-            : Date.parse(String(note.createdAt)),
-      })),
-    })),
+    scenes: session.scenes.map((scene) => {
+      const { order: _order, done: _done, ...rest } = scene as Scene & {
+        order?: number;
+        done?: boolean;
+      };
+      return {
+        ...rest,
+        linkedNpcIds: rest.linkedNpcIds ?? [],
+        choices: rest.choices ?? [],
+        liveNotes: (rest.liveNotes ?? []).map((note) => ({
+          ...note,
+          createdAt:
+            typeof note.createdAt === "number"
+              ? note.createdAt
+              : Date.parse(String(note.createdAt)),
+        })),
+      };
+    }),
     inTimeline: session.inTimeline ?? true,
     timelineOrder: session.timelineOrder ?? 0,
     createdAt: ensureTimestamp(session.createdAt, fallback),
@@ -253,10 +250,8 @@ function isScene(value: unknown): value is Scene {
     typeof value.id === "string" &&
     typeof value.title === "string" &&
     typeof value.text === "string" &&
-    typeof value.order === "number" &&
     (linkedNpcIds === undefined || isStringArray(linkedNpcIds)) &&
     (placeId === undefined || typeof placeId === "string") &&
-    (value.done === undefined || typeof value.done === "boolean") &&
     (liveNotes === undefined ||
       (Array.isArray(liveNotes) && liveNotes.every(isLiveNote))) &&
     (choices === undefined ||
@@ -376,29 +371,6 @@ function isAppData(value: unknown): value is AppData {
     (value.pcs === undefined ||
       (Array.isArray(value.pcs) && value.pcs.every(isPlayerCharacter)))
   );
-}
-
-function swapOrderedItem<T extends { order: number; id: string }>(
-  items: T[],
-  itemId: string,
-  direction: "up" | "down",
-): T[] {
-  const ordered = [...items].sort((a, b) => a.order - b.order);
-  const index = ordered.findIndex((item) => item.id === itemId);
-  if (index === -1) {
-    return items;
-  }
-
-  const nextIndex = direction === "up" ? index - 1 : index + 1;
-  if (nextIndex < 0 || nextIndex >= ordered.length) {
-    return items;
-  }
-
-  const swapped = [...ordered];
-  const temp = swapped[index];
-  swapped[index] = swapped[nextIndex];
-  swapped[nextIndex] = temp;
-  return moveToSequentialOrder(swapped);
 }
 
 function initialData(): AppData {
@@ -580,16 +552,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               return session;
             }
 
-            const nextOrder = session.scenes.length + 1;
             return {
               ...session,
               scenes: [
                 ...session.scenes,
                 {
                   id: createId("scene"),
-                  title: `Scène ${nextOrder}`,
+                  title: "Nouvelle scène",
                   text: "",
-                  order: nextOrder,
                   linkedNpcIds: [],
                 },
               ],
@@ -759,26 +729,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
             return {
               ...session,
-              scenes: moveToSequentialOrder(
-                session.scenes.filter((scene) => scene.id !== sceneId),
-              ),
-              updatedAt: timestamp,
-            };
-          }),
-        }));
-      },
-      moveScene(sessionId, sceneId, direction) {
-        const timestamp = nowIso();
-        setData((prev) => ({
-          ...prev,
-          sessions: prev.sessions.map((session) => {
-            if (session.id !== sessionId) {
-              return session;
-            }
-
-            return {
-              ...session,
-              scenes: swapOrderedItem(session.scenes, sceneId, direction),
+              scenes: session.scenes.filter((scene) => scene.id !== sceneId),
               updatedAt: timestamp,
             };
           }),

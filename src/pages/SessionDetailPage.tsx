@@ -11,7 +11,6 @@ export function SessionDetailPage() {
     addScene,
     updateScene,
     deleteScene,
-    moveScene,
     setSceneNpcLink,
     addSceneChoice,
     removeSceneChoice,
@@ -108,9 +107,7 @@ export function SessionDetailPage() {
       <div className="card card-compact space-y-3">
         <h3 className="text-lg font-semibold">Scènes</h3>
         <ul className="space-y-3">
-          {[...session.scenes]
-            .sort((a, b) => a.order - b.order)
-            .map((scene, index, orderedScenes) => {
+          {session.scenes.map((scene) => {
               const choices = scene.choices ?? [];
               const defaultDraftType = places.length > 0 ? "place" : "npc";
               const defaultTargetId =
@@ -136,25 +133,9 @@ export function SessionDetailPage() {
                 >
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-sm font-medium text-amber-950/70">
-                      Scène {scene.order}
+                      {scene.title?.trim() || "Scène sans titre"}
                     </span>
                     <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => moveScene(sessionId, scene.id, "up")}
-                        disabled={index === 0}
-                        className="btn btn-subtle px-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Monter
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => moveScene(sessionId, scene.id, "down")}
-                        disabled={index === orderedScenes.length - 1}
-                        className="btn btn-subtle px-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Descendre
-                      </button>
                       <button
                         type="button"
                         onClick={() => deleteScene(sessionId, scene.id)}

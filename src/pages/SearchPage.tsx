@@ -106,7 +106,7 @@ export function SearchPage() {
         .map((scene) => ({
           id: scene.id,
           type: "scene",
-          title: scene.title || `Scène ${scene.order}`,
+          title: scene.title || "Scène sans titre",
           subtitle: session.title || "Session sans titre",
           snippet: makeSnippet(scene.text, trimmed),
           href: `/sessions/${session.id}?scene=${scene.id}`,

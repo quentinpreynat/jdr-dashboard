@@ -208,7 +208,7 @@ export function PlacesPage() {
                       className="block rounded-md border border-amber-900/20 bg-white/70 px-3 py-2 text-sm hover:bg-amber-50"
                     >
                       <p className="font-medium">
-                        {scene.title || `Scène ${scene.order}`}
+                        {scene.title || "Scène sans titre"}
                       </p>
                       <p className="text-xs text-amber-900/70">
                         {session.title || "Session sans titre"}

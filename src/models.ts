@@ -35,10 +35,8 @@ export interface Scene {
   id: string;
   title: string;
   text: string;
-  order: number;
   linkedNpcIds: string[];
   placeId?: string;
-  done?: boolean;
   liveNotes?: LiveNote[];
   choices?: SceneChoice[];
 }

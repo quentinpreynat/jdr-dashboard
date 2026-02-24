@@ -80,15 +80,10 @@ export function SessionLivePage() {
   const campaign = sessionId ? findCampaignBySessionId(sessionId) : null;
   const places = campaign?.places ?? [];
 
-  const orderedScenes = useMemo(() => {
-    if (!session) {
-      return [];
-    }
-    return [...session.scenes].sort((a, b) => a.order - b.order);
-  }, [session]);
+  const scenes = useMemo(() => session?.scenes ?? [], [session]);
 
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(
-    orderedScenes[0]?.id ?? null,
+    scenes[0]?.id ?? null,
   );
   const [noteText, setNoteText] = useState("");
   const [clockLabel, setClockLabel] = useState(() =>
@@ -134,17 +129,14 @@ export function SessionLivePage() {
   const [flashSceneId, setFlashSceneId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
-    if (!selectedSceneId && orderedScenes[0]) {
-      setSelectedSceneId(orderedScenes[0].id);
+    if (!selectedSceneId && scenes[0]) {
+      setSelectedSceneId(scenes[0].id);
       return;
     }
-    if (
-      selectedSceneId &&
-      !orderedScenes.some((scene) => scene.id === selectedSceneId)
-    ) {
-      setSelectedSceneId(orderedScenes[0]?.id ?? null);
+    if (selectedSceneId && !scenes.some((scene) => scene.id === selectedSceneId)) {
+      setSelectedSceneId(scenes[0]?.id ?? null);
     }
-  }, [orderedScenes, selectedSceneId]);
+  }, [scenes, selectedSceneId]);
 
   useEffect(() => {
     const updateClock = () =>
@@ -213,13 +205,7 @@ export function SessionLivePage() {
   }
 
   const selectedScene =
-    orderedScenes.find((scene) => scene.id === selectedSceneId) ?? null;
-  const selectedIndex = selectedSceneId
-    ? orderedScenes.findIndex((scene) => scene.id === selectedSceneId)
-    : -1;
-  const hasPrev = selectedIndex > 0;
-  const hasNext =
-    selectedIndex >= 0 && selectedIndex < orderedScenes.length - 1;
+    scenes.find((scene) => scene.id === selectedSceneId) ?? null;
   const linkedNpcs = selectedScene
     ? data.npcs.filter((npc) => selectedScene.linkedNpcIds.includes(npc.id))
     : [];
@@ -258,11 +244,10 @@ export function SessionLivePage() {
       return;
     }
     if (lastSceneIdRef.current !== selectedScene.id) {
-      const nextScene = hasNext ? orderedScenes[selectedIndex + 1] : null;
-      setNoteTargetSceneId(nextScene?.id ?? selectedScene.id);
+      setNoteTargetSceneId(selectedScene.id);
       lastSceneIdRef.current = selectedScene.id;
     }
-  }, [selectedScene, hasNext, orderedScenes, selectedIndex]);
+  }, [selectedScene]);
 
   useEffect(() => {
     if (!selectedPcId) {
@@ -279,52 +264,13 @@ export function SessionLivePage() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       // Keyboard shortcuts are scoped to the page and avoid direct modal control here.
-      if (event.key === "ArrowLeft") {
-        if (hasPrev) {
-          setSelectedSceneId(orderedScenes[selectedIndex - 1].id);
-        }
-      } else if (event.key === "ArrowRight") {
-        if (hasNext) {
-          setSelectedSceneId(orderedScenes[selectedIndex + 1].id);
-        }
-      } else if (event.key.toLowerCase() === "n") {
+      if (event.key.toLowerCase() === "n") {
         noteInputRef.current?.focus();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [hasPrev, hasNext, orderedScenes, selectedIndex]);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) {
-      return;
-    }
-    let startX: number | null = null;
-    const onPointerDown = (event: PointerEvent) => {
-      startX = event.clientX;
-    };
-    const onPointerUp = (event: PointerEvent) => {
-      if (startX === null) {
-        return;
-      }
-      const dx = event.clientX - startX;
-      const threshold = 60;
-      if (dx > threshold && hasPrev) {
-        setSelectedSceneId(orderedScenes[selectedIndex - 1].id);
-      } else if (dx < -threshold && hasNext) {
-        setSelectedSceneId(orderedScenes[selectedIndex + 1].id);
-      }
-      startX = null;
-    };
-    // Simple horizontal swipe, avoids interfering with modal clicks.
-    el.addEventListener("pointerdown", onPointerDown);
-    el.addEventListener("pointerup", onPointerUp);
-    return () => {
-      el.removeEventListener("pointerdown", onPointerDown);
-      el.removeEventListener("pointerup", onPointerUp);
-    };
-  }, [orderedScenes, selectedIndex, hasPrev, hasNext]);
+  }, []);
 
   function handleAddNote() {
     if (!selectedScene) {
@@ -344,7 +290,7 @@ export function SessionLivePage() {
   const selectedSceneTitle = selectedScene?.title?.trim()
     ? selectedScene.title
     : selectedScene
-      ? `Scène ${selectedScene.order}`
+      ? "Scène sans titre"
       : "Scène";
   const selectedPlace = selectedScene?.placeId
     ? (places.find((place) => place.id === selectedScene.placeId) ?? null)
@@ -369,7 +315,7 @@ export function SessionLivePage() {
       .map((scene) => ({
         id: scene.id,
         type: "scene",
-        title: scene.title?.trim() || `Scène ${scene.order}`,
+        title: scene.title?.trim() || "Scène sans titre",
         snippet: makeSnippet(scene.text, trimmed),
       }));
 
@@ -573,7 +519,7 @@ export function SessionLivePage() {
                         {choices.map((choice) => {
                           const hasLinkedScene =
                             choice.targetType === "place" &&
-                            orderedScenes.some(
+                            scenes.some(
                               (scene) =>
                                 scene.id !== selectedScene?.id &&
                                 scene.placeId === choice.targetId,
@@ -702,12 +648,11 @@ export function SessionLivePage() {
                           className="flex items-start justify-between gap-3 rounded-md border border-amber-900/10 bg-white/60 px-3 py-2 text-sm"
                         >
                           {(() => {
-                            const sourceScene = orderedScenes.find(
+                            const sourceScene = scenes.find(
                               (scene) => scene.id === note.createdFromSceneId,
                             );
                             const sourceLabel = sourceScene
-                              ? sourceScene.title?.trim() ||
-                                `Scène ${sourceScene.order}`
+                              ? sourceScene.title?.trim() || "Scène sans titre"
                               : note.createdFromSceneId
                                 ? "(scène supprimée)"
                                 : selectedSceneTitle;
@@ -771,22 +716,16 @@ export function SessionLivePage() {
                           }
                           className="live-input min-h-11 w-44 flex-shrink-0 rounded-md px-3 py-2 text-sm"
                         >
-                          {orderedScenes.map((scene, index) => {
+                          {scenes.map((scene) => {
                             const title =
-                              scene.title?.trim() || `Scène ${scene.order}`;
-                            const label =
-                              selectedScene &&
-                              hasNext &&
-                              index === selectedIndex + 1
-                                ? `Scène suivante — ${title}`
-                                : title;
+                              scene.title?.trim() || "Scène sans titre";
                             return (
                               <option key={scene.id} value={scene.id}>
-                                {label}
+                                {title}
                               </option>
                             );
                           })}
-                          {orderedScenes.length === 0 && (
+                          {scenes.length === 0 && (
                             <option value="">Aucune scène</option>
                           )}
                         </select>
@@ -885,7 +824,7 @@ export function SessionLivePage() {
               >
                 <span className="pointer-events-none absolute left-0 top-0 h-full w-2 bg-amber-900/10" />
                 <div className="space-y-2 overflow-y-auto py-2">
-                  {orderedScenes.map((scene) => (
+                  {scenes.map((scene) => (
                     <button
                       key={scene.id}
                       type="button"
@@ -897,7 +836,7 @@ export function SessionLivePage() {
                       } ${flashSceneId === scene.id ? "flash-ring" : ""}`}
                     >
                       <div className="font-medium">
-                        {scene.title || `Scène ${scene.order}`}
+                        {scene.title || "Scène sans titre"}
                       </div>
                       {(scene.liveNotes?.length ?? 0) > 0 && (
                         <div className="mt-1 text-xs text-amber-900/60">
@@ -1737,7 +1676,7 @@ export function SessionLivePage() {
                                 className="card card-compact w-full text-left text-sm hover:bg-amber-50"
                               >
                                 <p className="font-medium">
-                                  {scene.title || `Scène ${scene.order}`}
+                                  {scene.title || "Scène sans titre"}
                                 </p>
                               </button>
                             </li>
