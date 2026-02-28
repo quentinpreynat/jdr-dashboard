@@ -223,6 +223,7 @@ function isSceneChoice(
   label: string;
   targetType: "place" | "npc";
   targetId: string;
+  intent?: unknown;
 } {
   if (!isRecord(value)) {
     return false;
@@ -230,11 +231,21 @@ function isSceneChoice(
   const targetType = value.targetType;
   const validTargetType = targetType === "place" || targetType === "npc";
   const targetId = value.targetId;
+  const intent = value.intent;
+  const validIntent =
+    intent === undefined ||
+    intent === "explore" ||
+    intent === "search" ||
+    intent === "move" ||
+    intent === "talk" ||
+    intent === "attack" ||
+    intent === "other";
   return (
     typeof value.id === "string" &&
     typeof value.label === "string" &&
     validTargetType &&
-    typeof targetId === "string"
+    typeof targetId === "string" &&
+    validIntent
   );
 }
 

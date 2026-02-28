@@ -1,6 +1,11 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { ChoiceIcon } from "../components/ChoiceIcon";
+import { ItemDetail } from "../components/ItemDetail";
+import { ItemEditor } from "../components/ItemEditor";
+import { addItem, deleteItem, getItems, updateItem } from "../lib/itemsStorage";
 import { useAppData } from "../state/AppDataContext";
+import type { Item } from "../types/item";
 
 const attitudeStyles: Record<string, string> = {
   friendly: "badge badge-friendly",
@@ -9,7 +14,7 @@ const attitudeStyles: Record<string, string> = {
   hostile: "badge badge-hostile",
 };
 
-type SearchScope = "all" | "scenes" | "npcs" | "places";
+type SearchScope = "all" | "scenes" | "npcs" | "places" | "items";
 type SearchResult =
   | {
       id: string;
@@ -27,6 +32,13 @@ type SearchResult =
   | {
       id: string;
       type: "place";
+      title: string;
+      subtitle?: string;
+      snippet?: string;
+    }
+  | {
+      id: string;
+      type: "item";
       title: string;
       subtitle?: string;
       snippet?: string;
@@ -93,7 +105,7 @@ export function SessionLivePage() {
     }),
   );
   const [rightPanelTab, setRightPanelTab] = useState<
-    "scenes" | "npcs" | "places" | "pcs" | null
+    "scenes" | "npcs" | "places" | "items" | "pcs" | null
   >(null);
   const RIGHT_PANEL_COLLAPSED_PX = 70;
   const RIGHT_PANEL_EXPANDED_PX = 140;
@@ -123,11 +135,23 @@ export function SessionLivePage() {
   const [searchScope, setSearchScope] = useState<SearchScope>("all");
   const [quickNpcId, setQuickNpcId] = useState<string | null>(null);
   const [quickPlaceId, setQuickPlaceId] = useState<string | null>(null);
-  const [panelMode, setPanelMode] = useState<"npc" | "place" | "search" | null>(
-    null,
-  );
+  const [quickItemId, setQuickItemId] = useState<string | null>(null);
+  const [panelMode, setPanelMode] = useState<
+    "npc" | "place" | "item" | "item-edit" | "search" | null
+  >(null);
   const [flashSceneId, setFlashSceneId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const [items, setItems] = useState<Item[]>(() => getItems());
+
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === "mj-items") {
+        setItems(getItems());
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
   useEffect(() => {
     if (!selectedSceneId && scenes[0]) {
       setSelectedSceneId(scenes[0].id);
@@ -187,6 +211,7 @@ export function SessionLivePage() {
         setPanelMode(null);
         setQuickNpcId(null);
         setQuickPlaceId(null);
+        setQuickItemId(null);
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -303,6 +328,7 @@ export function SessionLivePage() {
         scenes: [] as SearchResult[],
         npcs: [] as SearchResult[],
         places: [] as SearchResult[],
+        items: [] as SearchResult[],
       };
     }
     const normalizedQuery = normalizeText(trimmed);
@@ -359,14 +385,39 @@ export function SessionLivePage() {
         snippet: makeSnippet(place.description ?? "", trimmed),
       }));
 
-    return { scenes: sceneResults, npcs: npcResults, places: placeResults };
-  }, [debouncedQuery, session, sessionNpcs, places]);
+    const itemResults: SearchResult[] = items
+      .filter((item) => {
+        const haystack = [item.name, item.description, item.notes]
+          .filter(Boolean)
+          .join(" ");
+        return normalizeText(haystack).includes(normalizedQuery);
+      })
+      .map((item) => ({
+        id: item.id,
+        type: "item",
+        title: item.name?.trim() || "Objet sans nom",
+        subtitle: `${(item.linkedNpcIds?.length ?? 0)} PNJ • ${(item.linkedPlaceIds?.length ?? 0)} Lieux`,
+        snippet:
+          makeSnippet(item.description ?? "", trimmed) ??
+          makeSnippet(item.notes ?? "", trimmed),
+      }));
+
+    return {
+      scenes: sceneResults,
+      npcs: npcResults,
+      places: placeResults,
+      items: itemResults,
+    };
+  }, [debouncedQuery, session, sessionNpcs, places, items]);
 
   const quickNpc = quickNpcId
     ? data.npcs.find((npc) => npc.id === quickNpcId)
     : null;
   const quickPlace = quickPlaceId
     ? places.find((place) => place.id === quickPlaceId)
+    : null;
+  const quickItem = quickItemId
+    ? items.find((item) => item.id === quickItemId) ?? null
     : null;
   const isQuickOpen = panelMode !== null;
   const quickPlaceScenes = useMemo(() => {
@@ -389,7 +440,30 @@ export function SessionLivePage() {
     setSelectedSceneId(sceneId);
     setFlashSceneId(sceneId);
     setPanelMode(null);
+    setQuickItemId(null);
     window.setTimeout(() => setFlashSceneId(null), 800);
+  }
+
+  function handleCreateItem() {
+    const itemId = addItem({
+      name: "Nouvel objet",
+      description: "",
+      linkedNpcIds: [],
+      linkedPlaceIds: [],
+      notes: "",
+    });
+    setItems(getItems());
+    setQuickNpcId(null);
+    setQuickPlaceId(null);
+    setQuickItemId(itemId);
+    setPanelMode("item-edit");
+  }
+
+  function handleDeleteItem(itemId: string) {
+    deleteItem(itemId);
+    setItems((prev) => prev.filter((item) => item.id !== itemId));
+    setQuickItemId(null);
+    setPanelMode(null);
   }
 
   return (
@@ -465,6 +539,8 @@ export function SessionLivePage() {
                           "[Live] open place quick view",
                           selectedPlace.id,
                         );
+                        setQuickNpcId(null);
+                        setQuickItemId(null);
                         setQuickPlaceId(selectedPlace.id);
                         setPanelMode("place");
                       }}
@@ -531,14 +607,18 @@ export function SessionLivePage() {
                             <button
                               key={choice.id}
                               type="button"
-                              className={`group relative flex w-full items-center justify-center rounded-[10px] border border-stone-400 bg-stone-200 text-center font-medium text-stone-900 shadow-[0_6px_14px_rgba(67,41,21,0.12)] transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_10px_18px_rgba(67,41,21,0.18)] ${cardClass} ${
-                                isUsed ? "opacity-75 text-stone-600" : ""
+                              className={`group relative flex w-full items-center gap-3 rounded-xl border border-stone-300 bg-stone-100/20 font-medium text-stone-800 shadow-[0_6px_14px_rgba(67,41,21,0.12)] hover:bg-stone-100/40 transition-colors duration-150 ${cardClass} ${
+                                isUsed ? "opacity-85 text-stone-700" : ""
                               }`}
                               onClick={() => {
                                 if (choice.targetType === "place") {
+                                  setQuickNpcId(null);
+                                  setQuickItemId(null);
                                   setQuickPlaceId(choice.targetId);
                                   setPanelMode("place");
                                 } else if (choice.targetType === "npc") {
+                                  setQuickPlaceId(null);
+                                  setQuickItemId(null);
                                   setQuickNpcId(choice.targetId);
                                   setPanelMode("npc");
                                 }
@@ -555,21 +635,21 @@ export function SessionLivePage() {
                                 }
                               }}
                             >
-                              <span className="absolute inset-0 rounded-[10px] opacity-[0.25] mix-blend-multiply [background-image:repeating-linear-gradient(45deg,rgba(120,74,32,0.06)_0px,rgba(120,74,32,0.06)_1px,transparent_1px,transparent_6px)]" />
+                              <span className="absolute inset-0 rounded-xl opacity-[0.25] mix-blend-multiply [background-image:repeating-linear-gradient(45deg,rgba(120,74,32,0.06)_0px,rgba(120,74,32,0.06)_1px,transparent_1px,transparent_6px)]" />
                               <span
-                                className={`relative flex flex-col items-center justify-center ${innerClass}`}
+                                className={`relative flex w-full items-center ${innerClass}`}
                               >
-                                <span
-                                  className="text-sm text-stone-600"
-                                  aria-hidden="true"
-                                >
-                                  {choice.targetType === "place" ? "📍" : "🎭"}
-                                </span>
-                                <span className="max-w-full text-center leading-snug tracking-wide">
+                                <ChoiceIcon
+                                  intent={choice.intent}
+                                  size={18}
+                                  strokeWidth={1.5}
+                                  className="text-stone-700 shrink-0"
+                                />
+                                <span className="min-w-0 flex-1 text-left leading-snug tracking-wide text-stone-800">
                                   {choice.label}
                                 </span>
                                 {hasLinkedScene && (
-                                  <span className="text-xs text-stone-600">
+                                  <span className="ml-auto text-xs text-stone-600">
                                     ➜
                                   </span>
                                 )}
@@ -603,6 +683,8 @@ export function SessionLivePage() {
                         <button
                           type="button"
                           onClick={() => {
+                            setQuickPlaceId(null);
+                            setQuickItemId(null);
                             setQuickNpcId(npc.id);
                             setPanelMode("npc");
                           }}
@@ -1298,6 +1380,8 @@ export function SessionLivePage() {
                       key={npc.id}
                       type="button"
                       onClick={() => {
+                        setQuickPlaceId(null);
+                        setQuickItemId(null);
                         setQuickNpcId(npc.id);
                         setPanelMode("npc");
                       }}
@@ -1385,6 +1469,8 @@ export function SessionLivePage() {
                       key={place.id}
                       type="button"
                       onClick={() => {
+                        setQuickNpcId(null);
+                        setQuickItemId(null);
                         setQuickPlaceId(place.id);
                         setPanelMode("place");
                       }}
@@ -1406,6 +1492,103 @@ export function SessionLivePage() {
                 </div>
               </div>
             </div>
+            <div className="menu-section">
+              <button
+                type="button"
+                onClick={() =>
+                  setRightPanelTab((prev) => (prev === "items" ? null : "items"))
+                }
+                aria-expanded={rightPanelTab === "items"}
+                aria-controls="right-panel-items"
+                className={`menu-toggle relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
+                  rightPanelTab === "items"
+                    ? "border-stone-500 bg-stone-100"
+                    : "border-stone-300 bg-stone-200 hover:bg-stone-100"
+                }`}
+              >
+                {rightPanelTab === "items" && (
+                  <span aria-hidden="true" className="absolute top-1 right-1">
+                    <span
+                      className="absolute inset-0 rounded-full bg-stone-1000/30 animate-ping"
+                      style={{ animationDuration: "1.6s" }}
+                    />
+                    <span className="relative block h-2.5 w-2.5 rounded-full bg-stone-600 ring-2 ring-stone-300/70 shadow-[0_0_6px_rgba(180,83,9,0.35)]" />
+                  </span>
+                )}
+                <span className="flex w-full flex-col items-center justify-center gap-1">
+                  <span aria-hidden="true" className="text-base">
+                    🧰
+                  </span>
+                  {!isRightPanelExpanded && (
+                    <span className="text-[10px] font-semibold tracking-wide text-stone-600">
+                      Ob
+                    </span>
+                  )}
+                  {isRightPanelExpanded && (
+                    <span className="w-full truncate text-left text-xs font-medium text-stone-700">
+                      Objets
+                    </span>
+                  )}
+                </span>
+              </button>
+              <div
+                id="right-panel-items"
+                role="region"
+                aria-hidden={rightPanelTab !== "items"}
+                className={`section-content relative mt-2 origin-top overflow-hidden pr-1 transition duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none ${
+                  rightPanelTab === "items"
+                    ? "pointer-events-auto scale-y-100 opacity-100 translate-y-0"
+                    : "pointer-events-none scale-y-0 opacity-0 -translate-y-1"
+                }`}
+                style={{
+                  maxHeight:
+                    rightPanelTab === "items"
+                      ? "calc(100vh - 72px - 140px)"
+                      : 0,
+                  boxShadow:
+                    rightPanelTab === "items"
+                      ? "0 8px 24px rgba(30,20,10,0.12)"
+                      : "none",
+                }}
+              >
+                <span className="pointer-events-none absolute left-0 top-0 h-full w-2 bg-stone-500/10" />
+                <div className="space-y-2 overflow-y-auto py-2">
+                  <button
+                    type="button"
+                    onClick={handleCreateItem}
+                    className="btn btn-primary w-full"
+                  >
+                    Nouvel objet
+                  </button>
+                  {items.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setQuickNpcId(null);
+                        setQuickPlaceId(null);
+                        setQuickItemId(item.id);
+                        setPanelMode("item");
+                      }}
+                      className="w-full rounded-md border border-stone-300 bg-stone-100 px-3 py-3 text-left text-stone-900 transition-colors duration-200 hover:bg-stone-200/60"
+                    >
+                      <div className="font-medium">
+                        {item.name?.trim() || "Objet sans nom"}
+                      </div>
+                      <div className="text-xs text-stone-600">
+                        {(item.linkedNpcIds?.length ?? 0)} PNJ liés •{" "}
+                        {(item.linkedPlaceIds?.length ?? 0)} lieux liés
+                      </div>
+                    </button>
+                  ))}
+                  {items.length === 0 && (
+                    <p className="text-xs text-stone-600">
+                      Aucun objet disponible.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <>
@@ -1419,6 +1602,7 @@ export function SessionLivePage() {
               setPanelMode(null);
               setQuickNpcId(null);
               setQuickPlaceId(null);
+              setQuickItemId(null);
             }}
             aria-hidden="true"
           />
@@ -1447,6 +1631,7 @@ export function SessionLivePage() {
                             setPanelMode("search");
                             setQuickNpcId(null);
                             setQuickPlaceId(null);
+                            setQuickItemId(null);
                           }}
                           className="btn btn-subtle text-sm"
                           aria-label="Retour à la recherche"
@@ -1458,6 +1643,8 @@ export function SessionLivePage() {
                     <h3 className="text-center text-lg font-semibold">
                       {panelMode === "search"
                         ? "Recherche (session)"
+                        : quickItem
+                          ? quickItem.name
                         : quickNpc
                           ? quickNpc.name
                           : quickPlace?.name}
@@ -1469,6 +1656,7 @@ export function SessionLivePage() {
                           setPanelMode(null);
                           setQuickNpcId(null);
                           setQuickPlaceId(null);
+                          setQuickItemId(null);
                         }}
                         className="btn btn-subtle"
                         aria-label="Fermer la vue rapide"
@@ -1485,7 +1673,7 @@ export function SessionLivePage() {
                         ref={searchInputRef}
                         value={searchQuery}
                         onChange={(event) => setSearchQuery(event.target.value)}
-                        placeholder="Rechercher une scène ou un PNJ..."
+                        placeholder="Rechercher une scène, un PNJ, un lieu, un objet..."
                         className="min-h-11 w-full rounded-md border border-stone-300 bg-white/80 px-3 py-2 text-base"
                       />
                       <div className="flex flex-wrap gap-2 text-xs">
@@ -1495,6 +1683,7 @@ export function SessionLivePage() {
                             { id: "scenes", label: "Scènes" },
                             { id: "npcs", label: "PNJ" },
                             { id: "places", label: "Lieux" },
+                            { id: "items", label: "Objets" },
                           ] as const
                         ).map((tab) => (
                           <button
@@ -1516,6 +1705,11 @@ export function SessionLivePage() {
                       {searchScope === "places" && places.length === 0 && (
                         <p className="text-sm text-stone-700">
                           Aucun lieu disponible dans la campagne.
+                        </p>
+                      )}
+                      {searchScope === "items" && items.length === 0 && (
+                        <p className="text-sm text-stone-700">
+                          Aucun objet disponible.
                         </p>
                       )}
                       {debouncedQuery.trim() === "" && (
@@ -1559,6 +1753,8 @@ export function SessionLivePage() {
                                   <button
                                     type="button"
                                     onClick={() => {
+                                      setQuickPlaceId(null);
+                                      setQuickItemId(null);
                                       setQuickNpcId(npc.id);
                                       setPanelMode("npc");
                                     }}
@@ -1592,6 +1788,8 @@ export function SessionLivePage() {
                                   <button
                                     type="button"
                                     onClick={() => {
+                                      setQuickNpcId(null);
+                                      setQuickItemId(null);
                                       setQuickPlaceId(place.id);
                                       setPanelMode("place");
                                     }}
@@ -1615,9 +1813,45 @@ export function SessionLivePage() {
                           </div>
                         )}
                       {debouncedQuery.trim() !== "" &&
+                        (searchScope === "all" || searchScope === "items") &&
+                        searchResults.items.length > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-semibold">Objets</h4>
+                            <ul className="space-y-2">
+                              {searchResults.items.map((entry) => (
+                                <li key={entry.id}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setQuickNpcId(null);
+                                      setQuickPlaceId(null);
+                                      setQuickItemId(entry.id);
+                                      setPanelMode("item");
+                                    }}
+                                    className="card card-compact w-full text-left text-sm hover:bg-stone-100"
+                                  >
+                                    <p className="font-medium">{entry.title}</p>
+                                    {"subtitle" in entry && entry.subtitle && (
+                                      <p className="text-xs text-stone-600">
+                                        {entry.subtitle}
+                                      </p>
+                                    )}
+                                    {entry.snippet && (
+                                      <p className="text-xs text-stone-600">
+                                        {entry.snippet}
+                                      </p>
+                                    )}
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      {debouncedQuery.trim() !== "" &&
                         searchResults.scenes.length === 0 &&
                         searchResults.npcs.length === 0 &&
-                        searchResults.places.length === 0 && (
+                        searchResults.places.length === 0 &&
+                        searchResults.items.length === 0 && (
                           <p className="text-sm text-stone-700">
                             Aucun résultat trouvé.
                           </p>
@@ -1697,6 +1931,94 @@ export function SessionLivePage() {
                       )}
                     </div>
                   </div>
+                ) : panelMode === "item" && quickItem ? (
+                  <div className="live-quick-panel space-y-3">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPanelMode("item-edit")}
+                        className="btn btn-subtle text-sm"
+                      >
+                        Modifier
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const confirmed = window.confirm(
+                            "Supprimer cet objet ?",
+                          );
+                          if (!confirmed) {
+                            return;
+                          }
+                          handleDeleteItem(quickItem.id);
+                        }}
+                        className="btn btn-danger text-sm"
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                    <ItemDetail
+                      item={quickItem}
+                      npcs={data.npcs}
+                      places={places}
+                      onOpenNpc={(npcId) => {
+                        setQuickItemId(null);
+                        setQuickPlaceId(null);
+                        setQuickNpcId(npcId);
+                        setPanelMode("npc");
+                      }}
+                      onOpenPlace={(placeId) => {
+                        setQuickItemId(null);
+                        setQuickNpcId(null);
+                        setQuickPlaceId(placeId);
+                        setPanelMode("place");
+                      }}
+                    />
+                  </div>
+                ) : panelMode === "item-edit" && quickItem ? (
+                  <div className="live-quick-panel space-y-3">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPanelMode("item")}
+                        className="btn btn-subtle text-sm"
+                      >
+                        Aperçu
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const confirmed = window.confirm(
+                            "Supprimer cet objet ?",
+                          );
+                          if (!confirmed) {
+                            return;
+                          }
+                          handleDeleteItem(quickItem.id);
+                        }}
+                        className="btn btn-danger text-sm"
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                    <div className="rounded-md border border-stone-300 bg-gradient-to-b from-stone-100 to-stone-200 p-4 shadow-sm text-stone-800">
+                      <ItemEditor
+                        item={quickItem}
+                        npcs={data.npcs}
+                        places={places}
+                        onUpdate={(fields) => {
+                          updateItem(quickItem.id, fields);
+                          setItems((prev) =>
+                            prev.map((item) =>
+                              item.id === quickItem.id
+                                ? { ...item, ...fields }
+                                : item,
+                            ),
+                          );
+                        }}
+                      />
+                    </div>
+                  </div>
                 ) : null}
               </div>
             </div>
@@ -1705,10 +2027,3 @@ export function SessionLivePage() {
     </section>
   );
 }
-
-
-
-
-
-
-

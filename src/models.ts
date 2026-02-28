@@ -24,11 +24,20 @@ export interface LiveNote {
 
 export type SceneChoiceTargetType = "place" | "npc";
 
+export type ChoiceIntent =
+  | "explore"
+  | "search"
+  | "move"
+  | "talk"
+  | "attack"
+  | "other";
+
 export interface SceneChoice {
   id: string;
   label: string;
   targetType: SceneChoiceTargetType;
   targetId: string;
+  intent?: ChoiceIntent;
 }
 
 export interface Scene {

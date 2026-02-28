@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import type { Npc, Place, Scene, SceneChoiceTargetType } from "../models";
+import type {
+  ChoiceIntent,
+  Npc,
+  Place,
+  Scene,
+  SceneChoiceTargetType,
+} from "../models";
 import { SceneEditorAccordion } from "./SceneEditorAccordion";
 
 interface SceneEditorProps {
@@ -330,6 +336,37 @@ export function SceneEditor({
                             </button>
                           </div>
                         </div>
+                        <label className="flex flex-col gap-1">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-stone-600">
+                            Intention (icône Live)
+                          </span>
+                          <select
+                            value={choice.intent ?? ""}
+                            onChange={(event) =>
+                              onUpdate({
+                                choices: choices.map((entry) =>
+                                  entry.id === choice.id
+                                    ? {
+                                        ...entry,
+                                        intent: event.target.value
+                                          ? (event.target.value as ChoiceIntent)
+                                          : undefined,
+                                      }
+                                    : entry,
+                                ),
+                              })
+                            }
+                            className="min-h-11 rounded-md border border-stone-300 bg-stone-100 px-2 py-1 text-stone-800"
+                          >
+                            <option value="">Auto (neutre)</option>
+                            <option value="explore">Explorer</option>
+                            <option value="search">Fouiller</option>
+                            <option value="move">Se déplacer</option>
+                            <option value="talk">Parler</option>
+                            <option value="attack">Attaquer</option>
+                            <option value="other">Autre</option>
+                          </select>
+                        </label>
                       </div>
                     </div>
                   </div>
