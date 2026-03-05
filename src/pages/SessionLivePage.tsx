@@ -554,13 +554,13 @@ export function SessionLivePage() {
                 </div>
               </div>
 
-              <div className="mt-4 flex min-h-0 flex-col gap-4 overflow-y-auto pr-1">
-                <section className="live-card space-y-2 p-4 sm:p-5">
+              <div className="mt-6 flex min-h-0 flex-col space-y-8 overflow-y-auto pr-1">
+                <section className="live-card p-4 sm:p-5">
                   <p className="live-label">Texte de scène</p>
-                  <h5 className="text-base font-semibold">
+                  <h5 className="text-2xl font-semibold tracking-wide text-stone-900 mb-6">
                     {selectedSceneTitle}
                   </h5>
-                  <div className="parchment-text text-sm live-muted whitespace-pre-line">
+                  <div className="parchment-text text-base leading-relaxed text-stone-800 whitespace-pre-line">
                     {selectedScene?.text || "Aucun texte pour le moment."}
                   </div>
                 </section>
@@ -582,14 +582,12 @@ export function SessionLivePage() {
                             : "mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3";
                     const cardClass =
                       count <= 2
-                        ? "min-h-[140px] text-[17px] px-6 py-6"
+                        ? "min-h-[140px] px-6 py-6"
                         : count <= 4
-                          ? "min-h-[120px] text-base px-5 py-5"
+                          ? "min-h-[120px] px-5 py-5"
                           : count <= 6
-                            ? "min-h-[104px] text-sm px-4 py-4"
-                            : "min-h-[92px] text-sm px-3 py-3";
-                    const innerClass =
-                      count <= 2 ? "gap-3" : count <= 4 ? "gap-2" : "gap-1.5";
+                            ? "min-h-[104px] px-4 py-4"
+                            : "min-h-[92px] px-3 py-3";
                     return (
                       <div className={gridClass}>
                         {choices.map((choice) => {
@@ -603,12 +601,18 @@ export function SessionLivePage() {
                           const usedIds =
                             usedChoiceIds[selectedScene?.id ?? ""] ?? [];
                           const isUsed = usedIds.includes(choice.id);
+                          const isTaken = choice.isTaken ?? isUsed;
+                          const isLocked = choice.isLocked ?? false;
+                          const isImportant = choice.isImportant ?? false;
                           return (
                             <button
                               key={choice.id}
                               type="button"
-                              className={`group relative flex w-full items-center gap-3 rounded-xl border border-stone-300 bg-stone-100/20 font-medium text-stone-800 shadow-[0_6px_14px_rgba(67,41,21,0.12)] hover:bg-stone-100/40 transition-colors duration-150 ${cardClass} ${
-                                isUsed ? "opacity-85 text-stone-700" : ""
+                              disabled={isLocked}
+                              className={`group relative flex w-full flex-col items-center justify-center gap-3 rounded-xl border border-stone-300 bg-stone-100/40 px-6 py-6 text-stone-800 shadow-[0_6px_14px_rgba(67,41,21,0.12)] hover:bg-stone-200/40 transition-all duration-150 ease-out will-change-transform active:scale-[0.98] active:bg-stone-300/40 ${cardClass} ${
+                                isImportant ? "border-stone-500 bg-stone-100/60" : ""
+                              } ${isTaken ? "opacity-60 bg-stone-200/40" : ""} ${
+                                isLocked ? "opacity-50 cursor-not-allowed pointer-events-none" : ""
                               }`}
                               onClick={() => {
                                 if (choice.targetType === "place") {
@@ -636,25 +640,44 @@ export function SessionLivePage() {
                               }}
                             >
                               <span className="absolute inset-0 rounded-xl opacity-[0.25] mix-blend-multiply [background-image:repeating-linear-gradient(45deg,rgba(120,74,32,0.06)_0px,rgba(120,74,32,0.06)_1px,transparent_1px,transparent_6px)]" />
-                              <span
-                                className={`relative flex w-full items-center ${innerClass}`}
-                              >
+                              {isLocked && (
+                                <span className="absolute left-3 top-3" aria-hidden="true">
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    width="16"
+                                    height="16"
+                                    className="text-stone-600 opacity-90"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+                                    <rect x="6" y="11" width="12" height="10" rx="2" />
+                                  </svg>
+                                </span>
+                              )}
+                              <span className="relative flex w-full flex-col items-center justify-center gap-3">
                                 <ChoiceIcon
                                   intent={choice.intent}
-                                  size={18}
+                                  size={22}
                                   strokeWidth={1.5}
-                                  className="text-stone-700 shrink-0"
+                                  className={isLocked ? "text-stone-600" : "text-stone-700"}
                                 />
-                                <span className="min-w-0 flex-1 text-left leading-snug tracking-wide text-stone-800">
+                                <span className="text-sm font-medium text-stone-800 text-center">
                                   {choice.label}
                                 </span>
                                 {hasLinkedScene && (
-                                  <span className="ml-auto text-xs text-stone-600">
+                                  <span
+                                    className="absolute right-3 top-3 text-xs text-stone-600"
+                                    aria-hidden="true"
+                                  >
                                     ➜
                                   </span>
                                 )}
                               </span>
-                              {isUsed && (
+                              {isTaken && (
                                 <span className="absolute bottom-2 right-2 text-[10px] font-semibold text-stone-500">
                                   ✓
                                 </span>
@@ -727,7 +750,7 @@ export function SessionLivePage() {
                       {selectedScene?.liveNotes?.map((note) => (
                         <div
                           key={note.id}
-                          className="flex items-start justify-between gap-3 rounded-md border border-stone-300 bg-white/60 px-3 py-2 text-sm"
+                          className="flex items-start justify-between gap-3 rounded-md border border-stone-300 bg-white/60 px-3 py-2"
                         >
                           {(() => {
                             const sourceScene = scenes.find(
@@ -743,7 +766,7 @@ export function SessionLivePage() {
                                 ? `Depuis: ${selectedSceneTitle}`
                                 : `Depuis: ${sourceLabel}`;
                             return (
-                              <p className="text-xs live-muted">
+                              <p className="text-sm text-stone-600 italic break-words whitespace-normal">
                                 {new Date(note.createdAt).toLocaleTimeString(
                                   "fr-FR",
                                   {
@@ -752,7 +775,7 @@ export function SessionLivePage() {
                                   },
                                 )}{" "}
                                 —{" "}
-                                <span className="font-medium">{labelText}</span>{" "}
+                                <span className="not-italic font-medium">{labelText}</span>{" "}
                                 — {note.text}
                               </p>
                             );
@@ -783,7 +806,7 @@ export function SessionLivePage() {
                         </div>
                       ))}
                       {(selectedScene?.liveNotes?.length ?? 0) === 0 && (
-                        <p className="rounded-md border border-stone-300 bg-white/50 px-3 py-2 text-sm live-muted">
+                        <p className="rounded-md border border-stone-300 bg-white/50 px-3 py-2 text-sm text-stone-600 italic">
                           Aucune note pour le moment.
                         </p>
                       )}
@@ -1614,7 +1637,7 @@ export function SessionLivePage() {
             style={{ pointerEvents: isQuickOpen ? "auto" : "none" }}
           >
             <div
-              className={`h-full overflow-y-auto w-[90vw] sm:w-[360px] lg:w-[420px]`}
+              className={`h-full overflow-y-auto overflow-x-hidden w-[90vw] sm:w-[360px] lg:w-[420px]`}
             >
               <div
                 className={`h-full p-4 transition-opacity duration-300 motion-reduce:transition-none motion-reduce:opacity-100 will-change-transform ${
@@ -1640,7 +1663,7 @@ export function SessionLivePage() {
                         </button>
                       )}
                     </div>
-                    <h3 className="text-center text-lg font-semibold">
+                    <h3 className="min-w-0 flex-1 break-words text-center text-lg font-semibold">
                       {panelMode === "search"
                         ? "Recherche (session)"
                         : quickItem
@@ -1892,7 +1915,7 @@ export function SessionLivePage() {
                       </p>
                     )}
                     {quickPlace.description && (
-                      <p className="mt-3 text-sm text-stone-700">
+                      <p className="mt-3 break-words whitespace-normal text-sm text-stone-700">
                         {quickPlace.description}
                       </p>
                     )}

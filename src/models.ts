@@ -22,6 +22,7 @@ export interface LiveNote {
   createdFromSceneId?: string;
 }
 
+
 export type SceneChoiceTargetType = "place" | "npc";
 
 export type ChoiceIntent =
@@ -38,6 +39,9 @@ export interface SceneChoice {
   targetType: SceneChoiceTargetType;
   targetId: string;
   intent?: ChoiceIntent;
+  isTaken?: boolean;
+  isLocked?: boolean;
+  isImportant?: boolean;
 }
 
 export interface Scene {

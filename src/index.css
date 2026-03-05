@@ -501,7 +501,8 @@ h4 {
 
 .live-quick-panel {
   margin-top: 12px;
-  width: min(520px, 92vw);
+  width: 100%;
+  min-width: 0;
 }
 
 .focus-nav {

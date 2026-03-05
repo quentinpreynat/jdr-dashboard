@@ -72,6 +72,9 @@ export function AppShell() {
           </button>
         </div>
         <nav className="mx-auto flex max-w-6xl gap-2 px-4 pb-3 lg:hidden">
+          <NavLink to="/campaigns" className={navLinkClass}>
+            Campagnes
+          </NavLink>
           <NavLink to="/" end className={navLinkClass}>
             Campagne
           </NavLink>
@@ -99,6 +102,9 @@ export function AppShell() {
       <div className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-4 lg:grid-cols-[220px_1fr]">
         <aside className="card card-solid hidden rounded-lg border border-stone-300 bg-stone-100 p-3 shadow-sm lg:block">
           <nav className="flex gap-2 md:flex-col">
+            <NavLink to="/campaigns" className={navLinkClass}>
+              Campagnes
+            </NavLink>
             <NavLink to="/" end className={navLinkClass}>
               Campagne
             </NavLink>

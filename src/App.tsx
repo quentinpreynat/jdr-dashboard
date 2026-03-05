@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
+import { CampaignSelector } from "./components/CampaignSelector";
 import { CampaignDashboardPage } from "./pages/CampaignDashboardPage";
 import { NpcDetailPage } from "./pages/NpcDetailPage";
 import { NpcListPage } from "./pages/NpcListPage";
@@ -15,6 +16,7 @@ export default function App() {
     <Routes>
       <Route element={<AppShell />}>
         <Route path="/" element={<CampaignDashboardPage />} />
+        <Route path="/campaigns" element={<CampaignSelector />} />
         <Route path="/sessions" element={<SessionsListPage />} />
         <Route path="/sessions/:sessionId" element={<SessionDetailPage />} />
         <Route path="/session/:sessionId/live" element={<SessionLivePage />} />

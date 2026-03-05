@@ -10,10 +10,17 @@ import { cloneDemoData } from "../lib/demoData";
 import { addSnapshot, db, pruneSnapshots } from "../lib/db";
 import { createId } from "../lib/id";
 import { migrateIfNeeded } from "../lib/migrateFromLocalStorage";
-import { createLocalStorageStore } from "../lib/storage";
+import {
+  getCurrentCampaignId,
+  loadCampaigns,
+  loadLegacyAppData,
+  saveCampaigns,
+  setCurrentCampaignId,
+  type Campaign as StoredCampaign,
+} from "../storage/campaignStorage";
 import type {
   AppData,
-  Campaign,
+  Campaign as CampaignMeta,
   Npc,
   Place,
   PlayerCharacter,
@@ -24,7 +31,12 @@ import type {
 interface AppDataContextValue {
   data: AppData;
   lastSavedAt: string | null;
-  updateCampaign(fields: Partial<Omit<Campaign, "id">>): void;
+  campaigns: StoredCampaign[];
+  currentCampaign: StoredCampaign | null;
+  selectCampaign(id: string): void;
+  createCampaign(title: string): string;
+  deleteCampaign(id: string): void;
+  updateCampaign(fields: Partial<Omit<CampaignMeta, "id">>): void;
   addPlace(campaignId: string, place: Omit<Place, "id">): string;
   updatePlace(
     campaignId: string,
@@ -32,7 +44,7 @@ interface AppDataContextValue {
     fields: Partial<Omit<Place, "id">>,
   ): void;
   removePlace(campaignId: string, placeId: string): void;
-  findCampaignBySessionId(sessionId: string): Campaign | null;
+  findCampaignBySessionId(sessionId: string): CampaignMeta | null;
   moveSessionTimeline(sessionId: string, direction: "up" | "down"): void;
   createSession(): string;
   deleteSession(sessionId: string): void;
@@ -80,7 +92,11 @@ interface AppDataContextValue {
 }
 
 const AppDataContext = createContext<AppDataContextValue | undefined>(undefined);
-const store = createLocalStorageStore();
+
+type CampaignState = {
+  campaigns: StoredCampaign[];
+  currentId: string;
+};
 
 function uniqueIds(ids: string[]): string[] {
   return Array.from(new Set(ids));
@@ -98,7 +114,7 @@ function ensureTimestamp(value: string | undefined, fallback: string): string {
   return value ?? fallback;
 }
 
-function ensureCampaignTimestamps(campaign: Campaign): Campaign {
+function ensureCampaignTimestamps(campaign: CampaignMeta): CampaignMeta {
   const fallback = nowIso();
   return {
     ...campaign,
@@ -163,7 +179,7 @@ function ensurePlayerCharacter(pc: PlayerCharacter): PlayerCharacter {
 
 function ensureAppData(data: AppData): AppData {
   const { timelineItems: _legacyTimelineItems, ...campaign } =
-    data.campaign as Campaign & {
+    data.campaign as CampaignMeta & {
       timelineItems?: unknown;
     };
   const normalized = {
@@ -355,7 +371,7 @@ function isPlace(value: unknown): value is Place {
   );
 }
 
-function isCampaign(value: unknown): value is Campaign {
+function isCampaign(value: unknown): value is CampaignMeta {
   if (!isRecord(value)) {
     return false;
   }
@@ -379,20 +395,149 @@ function isAppData(value: unknown): value is AppData {
     value.sessions.every(isSession) &&
     Array.isArray(value.npcs) &&
     value.npcs.every(isNpc) &&
-    (value.pcs === undefined ||
+      (value.pcs === undefined ||
       (Array.isArray(value.pcs) && value.pcs.every(isPlayerCharacter)))
   );
 }
 
-function initialData(): AppData {
-  const persisted = store.load();
-  const seed = persisted ?? cloneDemoData();
-  return ensureAppData(seed);
+function isoToMs(value: string | undefined, fallback: number): number {
+  if (!value) {
+    return fallback;
+  }
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function campaignToAppData(campaign: StoredCampaign): AppData {
+  const createdAt = new Date(campaign.createdAt).toISOString();
+  const updatedAt = new Date(
+    campaign.updatedAt ?? campaign.createdAt,
+  ).toISOString();
+  return {
+    campaign: {
+      id: campaign.id,
+      title: campaign.title,
+      summary: campaign.summary ?? "",
+      tone: campaign.tone ?? "",
+      places: campaign.places ?? [],
+      createdAt,
+      updatedAt,
+    },
+    sessions: campaign.scenes ?? [],
+    npcs: campaign.npcs ?? [],
+    pcs: campaign.players ?? [],
+  };
+}
+
+function appDataToCampaign(
+  previous: StoredCampaign,
+  next: AppData,
+): StoredCampaign {
+  return {
+    ...previous,
+    id: previous.id,
+    title: next.campaign.title,
+    createdAt: previous.createdAt,
+    summary: next.campaign.summary,
+    tone: next.campaign.tone,
+    updatedAt: isoToMs(next.campaign.updatedAt, Date.now()),
+    places: next.campaign.places ?? [],
+    scenes: next.sessions,
+    npcs: next.npcs,
+    players: next.pcs ?? [],
+  };
+}
+
+function createBlankCampaign(title: string): StoredCampaign {
+  const timestamp = nowMs();
+  return {
+    id: createId("campaign"),
+    title,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    summary: "",
+    tone: "",
+    places: [],
+    scenes: [],
+    npcs: [],
+    players: [],
+  };
+}
+
+function createInitialCampaignState(): CampaignState {
+  const persisted = loadCampaigns();
+  const persistedCurrent = getCurrentCampaignId();
+
+  if (persisted.length > 0) {
+    const currentId = persisted.some((c) => c.id === persistedCurrent)
+      ? (persistedCurrent as string)
+      : persisted[0].id;
+    return { campaigns: persisted, currentId };
+  }
+
+  const legacyRaw = loadLegacyAppData();
+  const legacySeed =
+    legacyRaw && isAppData(legacyRaw) ? ensureAppData(legacyRaw) : null;
+
+  if (legacySeed) {
+    const createdAt = isoToMs(legacySeed.campaign.createdAt, nowMs());
+    const updatedAt = isoToMs(legacySeed.campaign.updatedAt, createdAt);
+    const seeded: StoredCampaign = {
+      id: legacySeed.campaign.id,
+      title: legacySeed.campaign.title,
+      createdAt,
+      updatedAt,
+      summary: legacySeed.campaign.summary,
+      tone: legacySeed.campaign.tone,
+      places: legacySeed.campaign.places ?? [],
+      scenes: legacySeed.sessions,
+      npcs: legacySeed.npcs,
+      players: legacySeed.pcs ?? [],
+    };
+    return { campaigns: [seeded], currentId: seeded.id };
+  }
+
+  const first = createBlankCampaign("Campagne 1");
+  return { campaigns: [first], currentId: first.id };
 }
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<AppData>(initialData);
+  const [state, setState] = useState<CampaignState>(createInitialCampaignState);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+
+  const currentCampaign = useMemo(
+    () => state.campaigns.find((campaign) => campaign.id === state.currentId) ?? null,
+    [state.campaigns, state.currentId],
+  );
+
+  const data = useMemo(() => {
+    if (!currentCampaign) {
+      return ensureAppData(cloneDemoData());
+    }
+    return ensureAppData(campaignToAppData(currentCampaign));
+  }, [currentCampaign]);
+
+  const updateCurrentCampaignData = (updater: (prev: AppData) => AppData) => {
+    setState((prev) => {
+      const index = prev.campaigns.findIndex(
+        (campaign) => campaign.id === prev.currentId,
+      );
+      if (index === -1) {
+        return prev;
+      }
+      const previousCampaign = prev.campaigns[index];
+      const previousData = ensureAppData(campaignToAppData(previousCampaign));
+      const nextDataRaw = updater(previousData);
+      const nextData = ensureAppData({
+        ...nextDataRaw,
+        campaign: { ...nextDataRaw.campaign, id: previousCampaign.id },
+      });
+      const nextCampaign = appDataToCampaign(previousCampaign, nextData);
+      const nextCampaigns = [...prev.campaigns];
+      nextCampaigns[index] = nextCampaign;
+      return { ...prev, campaigns: nextCampaigns };
+    });
+  };
 
   useEffect(() => {
     void migrateIfNeeded();
@@ -402,9 +547,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    store.save(data);
+    saveCampaigns(state.campaigns);
     setLastSavedAt(nowIso());
-  }, [data]);
+  }, [state.campaigns]);
+
+  useEffect(() => {
+    setCurrentCampaignId(state.currentId);
+  }, [state.currentId]);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -424,9 +573,47 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     () => ({
       data,
       lastSavedAt,
+      campaigns: state.campaigns,
+      currentCampaign,
+      selectCampaign(id) {
+        setState((prev) => {
+          if (!prev.campaigns.some((campaign) => campaign.id === id)) {
+            return prev;
+          }
+          return { ...prev, currentId: id };
+        });
+      },
+      createCampaign(title) {
+        const next = createBlankCampaign(title.trim() || "Nouvelle campagne");
+        setState((prev) => ({
+          campaigns: [...prev.campaigns, next],
+          currentId: next.id,
+        }));
+        return next.id;
+      },
+      deleteCampaign(id) {
+        setState((prev) => {
+          if (prev.campaigns.length <= 1) {
+            return prev;
+          }
+          const nextCampaigns = prev.campaigns.filter(
+            (campaign) => campaign.id !== id,
+          );
+          if (nextCampaigns.length === prev.campaigns.length) {
+            return prev;
+          }
+          const nextCurrentId =
+            prev.currentId === id ? nextCampaigns[0]?.id ?? "" : prev.currentId;
+          return {
+            ...prev,
+            campaigns: nextCampaigns,
+            currentId: nextCurrentId || nextCampaigns[0].id,
+          };
+        });
+      },
       updateCampaign(fields) {
         const timestamp = nowIso();
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           campaign: { ...prev.campaign, ...fields, updatedAt: timestamp },
         }));
@@ -446,7 +633,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
         const timestamp = nowIso();
         const placeId = createId("place");
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           campaign: {
             ...prev.campaign,
@@ -469,7 +656,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           return;
         }
         const timestamp = nowIso();
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           campaign: {
             ...prev.campaign,
@@ -485,7 +672,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           return;
         }
         const timestamp = nowIso();
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           campaign: {
             ...prev.campaign,
@@ -516,7 +703,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       createSession() {
         const timestamp = nowIso();
         const sessionId = createId("session");
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           sessions: [
             ...prev.sessions,
@@ -538,14 +725,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         return sessionId;
       },
       deleteSession(sessionId) {
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           sessions: prev.sessions.filter((session) => session.id !== sessionId),
         }));
       },
       updateSession(sessionId, fields) {
         const timestamp = nowIso();
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           sessions: prev.sessions.map((session) =>
             session.id === sessionId
@@ -556,7 +743,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       addScene(sessionId) {
         const timestamp = nowIso();
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           sessions: prev.sessions.map((session) => {
             if (session.id !== sessionId) {
@@ -581,7 +768,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       updateScene(sessionId, sceneId, fields) {
         const timestamp = nowIso();
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           sessions: prev.sessions.map((session) => {
             if (session.id !== sessionId) {
@@ -605,7 +792,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
         const timestamp = nowIso();
         const timestampMs = nowMs();
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           sessions: prev.sessions.map((session) => {
             if (session.id !== sessionId) {
@@ -637,7 +824,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       removeSceneLiveNote(sessionId, sceneId, noteId) {
         const timestamp = nowIso();
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           sessions: prev.sessions.map((session) => {
             if (session.id !== sessionId) {
@@ -673,7 +860,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
         const timestamp = nowIso();
         const choiceId = createId("choice");
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           sessions: prev.sessions.map((session) => {
             if (session.id !== sessionId) {
@@ -704,7 +891,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       removeSceneChoice(sessionId, sceneId, choiceId) {
         const timestamp = nowIso();
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           sessions: prev.sessions.map((session) => {
             if (session.id !== sessionId) {
@@ -731,7 +918,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       deleteScene(sessionId, sceneId) {
         const timestamp = nowIso();
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           sessions: prev.sessions.map((session) => {
             if (session.id !== sessionId) {
@@ -749,7 +936,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       createNpc() {
         const timestamp = nowIso();
         const npcId = createId("npc");
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           npcs: [
             ...prev.npcs,
@@ -770,7 +957,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       deleteNpc(npcId) {
         const timestamp = nowIso();
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           npcs: prev.npcs.filter((npc) => npc.id !== npcId),
           sessions: prev.sessions.map((session) => {
@@ -793,7 +980,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       updateNpc(npcId, fields) {
         const timestamp = nowIso();
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           npcs: prev.npcs.map((npc) =>
             npc.id === npcId
@@ -805,7 +992,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       createPlayerCharacter() {
         const timestamp = nowIso();
         const pcId = createId("pc");
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           pcs: [
             ...(prev.pcs ?? []),
@@ -826,7 +1013,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       deletePlayerCharacter(pcId) {
         const timestamp = nowIso();
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           pcs: (prev.pcs ?? []).filter((pc) => pc.id !== pcId),
           sessions: prev.sessions.map((session) => ({
@@ -837,7 +1024,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       updatePlayerCharacter(pcId, fields) {
         const timestamp = nowIso();
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           pcs: (prev.pcs ?? []).map((pc) =>
             pc.id === pcId ? { ...pc, ...fields, updatedAt: timestamp } : pc,
@@ -846,7 +1033,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       moveSessionTimeline(sessionId, direction) {
         const timestamp = nowIso();
-        setData((prev) => {
+        updateCurrentCampaignData((prev) => {
           const timelineSessions = prev.sessions
             .filter((session) => session.inTimeline)
             .sort((a, b) => a.timelineOrder - b.timelineOrder);
@@ -886,7 +1073,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       },
       setSceneNpcLink(sessionId, sceneId, npcId, linked) {
         const timestamp = nowIso();
-        setData((prev) => ({
+        updateCurrentCampaignData((prev) => ({
           ...prev,
           sessions: prev.sessions.map((session) => {
             if (session.id !== sessionId) {
@@ -911,18 +1098,32 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }));
       },
       resetDemoData() {
-        store.clear();
-        setData(ensureAppData(cloneDemoData()));
+        const demo = ensureAppData(cloneDemoData());
+        updateCurrentCampaignData((prev) => ({
+          ...demo,
+          campaign: { ...demo.campaign, id: prev.campaign.id },
+        }));
       },
       replaceData(raw) {
         if (!isAppData(raw)) {
           return { ok: false, error: "Format de sauvegarde invalide." };
         }
-        setData(ensureAppData(raw));
+        const imported = ensureAppData(raw);
+        updateCurrentCampaignData((prev) => ({
+          ...imported,
+          campaign: { ...imported.campaign, id: prev.campaign.id },
+        }));
         return { ok: true };
       },
     }),
-    [data, lastSavedAt],
+    [
+      currentCampaign,
+      data,
+      lastSavedAt,
+      state.campaigns,
+      state.currentId,
+      updateCurrentCampaignData,
+    ],
   );
 
   return (
