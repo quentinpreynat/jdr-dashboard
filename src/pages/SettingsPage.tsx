@@ -1,8 +1,10 @@
 ﻿import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useAppData } from "../state/AppDataContext";
+import { useSettings } from "../state/SettingsContext";
 
 export function SettingsPage() {
   const { data, resetDemoData, replaceData } = useAppData();
+  const { settings, updateSettings } = useSettings();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [isDimMode, setIsDimMode] = useState<boolean>(false);
@@ -115,6 +117,25 @@ export function SettingsPage() {
             className="h-5 w-5 accent-amber-900"
           />
           <span className="font-medium">Mode tamisé (Session Live)</span>
+        </label>
+      </div>
+
+      <div className="card">
+        <h3 className="text-lg font-semibold">Générateur de situation imprévue</h3>
+        <p className="mb-3 mt-1 text-sm text-amber-950/80">
+          Affiche un bouton “🎲 Situation imprévue” sous les choix de la scène
+          (Session Live).
+        </p>
+        <label className="flex items-center gap-2 mt-4">
+          <input
+            type="checkbox"
+            checked={settings.improvisationEnabled}
+            onChange={(event) =>
+              updateSettings({ improvisationEnabled: event.target.checked })
+            }
+            className="h-5 w-5 accent-amber-900"
+          />
+          Activer les situations imprévues
         </label>
       </div>
 

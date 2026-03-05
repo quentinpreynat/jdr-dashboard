@@ -48,10 +48,10 @@ export function CampaignSelector() {
                     selectCampaign(campaign.id);
                     navigate("/");
                   }}
-                  className={`flex-1 rounded-md border px-3 py-2 text-left text-sm transition ${
+                  className={`flex-1 rounded-xl border px-3 py-2 text-left text-sm transition-colors ${
                     isActive
-                      ? "border-amber-900/30 bg-amber-50 font-semibold"
-                      : "border-stone-300 bg-white hover:bg-stone-50"
+                      ? "border-[#b89a6a] bg-[rgba(217,181,109,0.35)] font-semibold"
+                      : "border-[#b89a6a]/70 bg-[rgba(241,229,208,0.75)] hover:bg-[rgba(241,229,208,0.92)]"
                   }`}
                 >
                   {campaign.title}
@@ -95,7 +95,7 @@ export function CampaignSelector() {
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             placeholder={defaultNewCampaignTitle(campaigns.length)}
-            className="min-h-11 flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm"
+            className="min-h-11 flex-1 rounded-xl border border-[#b89a6a]/70 bg-[rgba(241,229,208,0.9)] px-3 py-2 text-sm text-[var(--ink)] placeholder:text-[rgba(58,46,31,0.65)]"
           />
           <button type="button" onClick={onCreate} className="btn btn-primary">
             Créer
@@ -105,4 +105,3 @@ export function CampaignSelector() {
     </section>
   );
 }
-

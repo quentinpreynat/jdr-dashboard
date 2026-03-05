@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import { useAppData } from "../state/AppDataContext";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }): string =>
-  `flex min-h-11 items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition ${
-    isActive ? "bg-oak text-white" : "text-stone-800 hover:bg-stone-300/40"
+  `flex min-h-11 items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+    isActive
+      ? "bg-[var(--accent-gold)] text-[var(--ink)]"
+      : "text-[var(--ink)] opacity-90 hover:bg-[rgba(241,229,208,0.55)] hover:opacity-100"
   }`;
 
 export function AppShell() {
@@ -50,18 +52,18 @@ export function AppShell() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-200 text-stone-800">
-      <header className="border-b border-stone-300 bg-stone-100/80 backdrop-blur-sm">
+    <div className="min-h-screen bg-transparent text-[var(--ink)]">
+      <header className="border-b border-[#b89a6a]/60 bg-[rgba(241,229,208,0.82)] backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-xl font-semibold">
+            <h1 className="font-cinzel text-xl font-semibold tracking-wide">
               L&apos;Anneau Unique - Carnet du MJ
             </h1>
-            <p className="text-xs text-stone-600">
+            <p className="text-xs opacity-80">
               Application web locale - jalon 1
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-stone-600">
+          <div className="flex flex-wrap items-center gap-2 text-xs opacity-80">
             {!isOnline && (
               <span className="badge badge-hostile px-2 py-1">Hors ligne</span>
             )}
@@ -100,7 +102,7 @@ export function AppShell() {
       </header>
 
       <div className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-4 lg:grid-cols-[220px_1fr]">
-        <aside className="card card-solid hidden rounded-lg border border-stone-300 bg-stone-100 p-3 shadow-sm lg:block">
+        <aside className="card hidden lg:block">
           <nav className="flex gap-2 md:flex-col">
             <NavLink to="/campaigns" className={navLinkClass}>
               Campagnes
@@ -129,7 +131,7 @@ export function AppShell() {
           </nav>
         </aside>
 
-        <main className="card card-solid rounded-lg border border-stone-300 bg-stone-100 p-4 shadow-sm">
+        <main className="card">
           <Outlet />
         </main>
       </div>

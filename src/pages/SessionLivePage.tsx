@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChoiceIcon } from "../components/ChoiceIcon";
+import { ImprovisationModal } from "../components/ImprovisationModal";
 import { ItemDetail } from "../components/ItemDetail";
 import { ItemEditor } from "../components/ItemEditor";
 import { addItem, deleteItem, getItems, updateItem } from "../lib/itemsStorage";
 import { useAppData } from "../state/AppDataContext";
+import { useSettings } from "../state/SettingsContext";
 import type { Item } from "../types/item";
 
 const attitudeStyles: Record<string, string> = {
@@ -85,6 +87,7 @@ export function SessionLivePage() {
     deletePlayerCharacter,
     findCampaignBySessionId,
   } = useAppData();
+  const { settings } = useSettings();
   const containerRef = useRef<HTMLElement | null>(null);
   const noteInputRef = useRef<HTMLInputElement | null>(null);
   const scenePanelRef = useRef<HTMLDivElement | null>(null);
@@ -136,6 +139,7 @@ export function SessionLivePage() {
   const [quickNpcId, setQuickNpcId] = useState<string | null>(null);
   const [quickPlaceId, setQuickPlaceId] = useState<string | null>(null);
   const [quickItemId, setQuickItemId] = useState<string | null>(null);
+  const [showImprovisation, setShowImprovisation] = useState(false);
   const [panelMode, setPanelMode] = useState<
     "npc" | "place" | "item" | "item-edit" | "search" | null
   >(null);
@@ -471,6 +475,9 @@ export function SessionLivePage() {
       ref={containerRef}
       className={`session-live h-screen w-full overflow-x-hidden ${isDimMode ? "is-dim" : ""}`}
     >
+      {showImprovisation && (
+        <ImprovisationModal onClose={() => setShowImprovisation(false)} />
+      )}
       <div className="space-y-6 py-5">
         <header className="flex flex-wrap items-center justify-between gap-3 px-6">
           <div>
@@ -518,10 +525,13 @@ export function SessionLivePage() {
             className="scene-panel card card-muted flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden transition-all duration-300 ease-in-out"
           >
             <div
-              className="fade-in flex min-h-0 flex-col"
-              key={selectedScene?.id ?? "empty"}
+              className="grimoire-container flex min-h-0 flex-col"
             >
-              <div className="flex flex-wrap items-center justify-between gap-2">
+              <div
+                key={selectedScene?.id ?? "empty"}
+                className="grimoire-page flex min-h-0 flex-col"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide text-stone-600">
                     Scène sélectionnée
@@ -694,6 +704,16 @@ export function SessionLivePage() {
                       </div>
                     );
                   })()}
+
+                  {settings.improvisationEnabled && (
+                    <button
+                      className="mt-6 w-full rounded border border-amber-700 bg-amber-100 px-4 py-2 font-semibold text-amber-900 shadow transition hover:bg-amber-200"
+                      onClick={() => setShowImprovisation(true)}
+                      type="button"
+                    >
+                      🎲 Situation imprévue
+                    </button>
+                  )}
                 </section>
 
                 <div className="grid gap-3 lg:grid-cols-2">
@@ -852,6 +872,7 @@ export function SessionLivePage() {
                     </div>
                   </section>
                 </div>
+              </div>
               </div>
             </div>
             </div>

@@ -14,7 +14,8 @@ export function ChoiceIcon({
   className = "",
 }: ChoiceIconProps) {
   const resolved: ChoiceIntent = intent ?? "other";
-  const svgClassName = `opacity-80 ${className}`.trim();
+  const svgClassName =
+    `icon-tavern ${className}`.trim();
   const commonProps = {
     width: size,
     height: size,
