@@ -479,12 +479,25 @@ export function SessionLivePage() {
         <ImprovisationModal onClose={() => setShowImprovisation(false)} />
       )}
       <div className="space-y-6 py-5">
-        <header className="relative flex flex-wrap items-center justify-between gap-3 px-6">
+        <header
+          className="relative flex flex-wrap items-center justify-between gap-3 px-6"
+          style={{
+            background: "linear-gradient(160deg, #fdf6e3, #f5e6c0)",
+            border: "2px solid #8b5e2a",
+            borderRadius: "2px 12px 2px 12px",
+            padding: "1rem 1.5rem",
+            boxShadow: "4px 4px 20px rgba(0,0,0,0.3)",
+            marginRight: '75px',
+          }}
+        >
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-amber-700/80 font-cinzel">
+            <p
+              className="text-xs uppercase tracking-[0.2em] font-cinzel"
+              style={{ color: "#8a6010" }}
+            >
               Session Live
             </p>
-            <h2 className="text-2xl font-semibold font-cinzel text-amber-950">
+            <h2 className="page-title text-2xl">
               {session.title || "Session sans titre"}
             </h2>
             <p className="text-sm text-stone-700">
@@ -508,19 +521,12 @@ export function SessionLivePage() {
             >
               🔍
             </button>
-            <Link to={`/sessions/${sessionId}`} className="rounded-md border border-amber-800/50 bg-amber-900/80 px-3 py-2 text-sm text-amber-100 hover:bg-amber-800 font-cinzel tracking-wide">
+            <Link
+              to={`/sessions/${sessionId}`}
+              className="btn-outline-medieval text-sm"
+            >
               Retour aux détails
             </Link>
-          </div>
-          <div className="absolute top-3 right-20 pointer-events-none select-none" aria-hidden="true">
-            <div style={{
-              fontSize: '1.5rem',
-              animation: 'flicker 2s ease-in-out infinite alternate',
-              filter: 'drop-shadow(0 0 6px rgba(255, 180, 50, 0.8))',
-              transformOrigin: 'bottom center',
-            }}>
-              🕯️
-            </div>
           </div>
         </header>
 
@@ -541,7 +547,16 @@ export function SessionLivePage() {
                 key={selectedScene?.id ?? "empty"}
                 className="grimoire-page flex min-h-0 flex-col"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2"
+                  style={{
+                      background: 'linear-gradient(160deg, #fdf6e3, #f5e6c0)',
+                      border: '2px solid #8b5e2a',
+                      borderRadius: '2px 12px 2px 12px',
+                      padding: '0.75rem 1.25rem',
+                      marginBottom: '1rem',
+                      boxShadow: '2px 2px 12px rgba(0,0,0,0.2)',
+                    }}
+                  >
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.2em] text-amber-700 font-cinzel">
                     Scène sélectionnée
@@ -575,8 +590,8 @@ export function SessionLivePage() {
               </div>
 
               <div className="mt-6 flex min-h-0 flex-col space-y-8 overflow-y-auto pr-1">
-                <section className="rounded-lg border-2 border-amber-800/50 card-parchment card-gold-border p-5 shadow-[4px_4px_16px_rgba(0,0,0,0.25)]">
-                  <p className="text-xs uppercase tracking-[0.15em] text-amber-800/70 font-cinzel mb-1">
+                <section className="section-card p-5">
+                  <p className="field-label mb-1">
                     Texte de scène
                   </p>
                   <h5 className="text-2xl font-semibold tracking-wide text-amber-950 mb-6 font-cinzel border-b border-amber-800/30 pb-3">
@@ -587,8 +602,8 @@ export function SessionLivePage() {
                   </div>
                 </section>
 
-                <section className="rounded-lg border-2 border-amber-800/50 card-parchment p-4 shadow-[4px_4px_16px_rgba(0,0,0,0.25)] relative card-medieval">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/70 font-cinzel">
+                <section className="section-card p-4 relative">
+                  <p className="field-label mb-1">
                     Choix
                   </p>
                   {(() => {
@@ -719,7 +734,7 @@ export function SessionLivePage() {
 
                   {settings.improvisationEnabled && (
                     <button
-                      className="mt-6 w-full rounded-lg border-2 border-amber-800 bg-gradient-to-b from-amber-700 to-amber-900 px-4 py-3 font-semibold text-amber-100 shadow-lg transition hover:from-amber-600 hover:to-amber-800 font-cinzel tracking-wide"
+                      className="mt-6 w-full btn-gold-medieval py-3 text-base"
                       onClick={() => setShowImprovisation(true)}
                       type="button"
                     >
@@ -729,8 +744,8 @@ export function SessionLivePage() {
                 </section>
 
                 <div className="grid gap-3 lg:grid-cols-2">
-                  <section className="rounded-lg border-2 border-amber-800/50 card-parchment p-4 shadow-[4px_4px_16px_rgba(0,0,0,0.25)] relative card-medieval">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/70 font-cinzel">
+                  <section className="section-card p-4 relative">
+                    <p className="field-label mb-1">
                       Personnages
                     </p>
                     <div className="mt-2 space-y-2">
@@ -772,9 +787,9 @@ export function SessionLivePage() {
                     </div>
                   </section>
 
-                  <section className="rounded-lg border-2 border-amber-800/50 card-parchment p-4 shadow-[4px_4px_16px_rgba(0,0,0,0.25)] relative card-medieval">
+                  <section className="section-card p-4 relative">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/70 font-cinzel">
+                      <p className="field-label mb-1">
                         Notes
                       </p>
                     </div>
@@ -877,7 +892,7 @@ export function SessionLivePage() {
                       <button
                         type="button"
                         onClick={handleAddNote}
-                        className="flex-shrink-0 rounded-lg border border-amber-800/60 bg-gradient-to-b from-amber-700 to-amber-900 px-4 py-2 text-sm font-semibold text-amber-100 shadow transition hover:from-amber-600 hover:to-amber-800"
+                        className="btn-gold-medieval flex-shrink-0 px-4 py-2 text-sm"
                       >
                         Ajouter
                       </button>

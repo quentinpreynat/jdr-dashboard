@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCampaign } from "../hooks/useCampaign";
 import grimoireImg from "../assets/grimoire.png";
@@ -66,9 +66,10 @@ export function WelcomeScreen({ onEnter }: Props) {
           inset: 0,
           display: 'flex',
         }}>
+          {/* Titre */}
           <div style={{
             position: 'absolute',
-            top: '1%',
+            top: '2%',
             left: 0,
             right: 0,
             textAlign: 'center',
@@ -78,7 +79,7 @@ export function WelcomeScreen({ onEnter }: Props) {
               fontFamily: "'Uncial Antiqua', serif",
               fontSize: 'clamp(1.8rem, 4vw, 3rem)',
               color: '#c9962a',
-              textShadow: '2px 2px 12px rgba(0,0,0,0.9), 0 0 30px rgba(201,150,42,0.3)',
+              textShadow: '2px 2px 12px rgba(0,0,0,0.9)',
               margin: 0,
               lineHeight: 1.2,
             }}>
@@ -96,10 +97,13 @@ export function WelcomeScreen({ onEnter }: Props) {
             </p>
           </div>
 
-          {/* Page gauche */}
+          {/* Page gauche - position absolue */}
           <div style={{
-            flex: 1,
-            padding: '20% 1% 18% 14%',
+            position: 'absolute',
+            top: '30%',
+            left: '25%',
+            width: '28%',
+            bottom: '18%',
             display: 'flex',
             flexDirection: 'column',
           }}>
@@ -134,6 +138,7 @@ export function WelcomeScreen({ onEnter }: Props) {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem',
+                    width: '75%',
                     backdropFilter: 'blur(2px)',
                   }}
                   onMouseEnter={e => {
@@ -162,13 +167,13 @@ export function WelcomeScreen({ onEnter }: Props) {
             </div>
           </div>
 
-          {/* Séparateur central */}
-          <div style={{ width: '12%' }} />
-
-          {/* Page droite */}
+          {/* Page droite - position absolue */}
           <div style={{
-            flex: 1,
-            padding: '20% 12% 18% 1%',
+            position: 'absolute',
+            top: '30%',
+            left: '54%',
+            width: '28%',
+            bottom: '18%',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
@@ -199,7 +204,7 @@ export function WelcomeScreen({ onEnter }: Props) {
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     letterSpacing: '0.08em',
-                    width: '100%',
+                    width: '75%',
                     backdropFilter: 'blur(2px)',
                     whiteSpace: 'nowrap',
                   }}
