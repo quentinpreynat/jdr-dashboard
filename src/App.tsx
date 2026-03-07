@@ -10,23 +10,49 @@ import { SessionDetailPage } from "./pages/SessionDetailPage";
 import { SessionLivePage } from "./pages/SessionLivePage";
 import { SessionsListPage } from "./pages/SessionsListPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import woodTexture from "./assets/wood-texture.png";
 
 export default function App() {
   return (
-    <Routes>
-      <Route element={<AppShell />}>
-        <Route path="/" element={<CampaignDashboardPage />} />
-        <Route path="/campaigns" element={<CampaignSelector />} />
-        <Route path="/sessions" element={<SessionsListPage />} />
-        <Route path="/sessions/:sessionId" element={<SessionDetailPage />} />
-        <Route path="/session/:sessionId/live" element={<SessionLivePage />} />
-        <Route path="/campaign/:campaignId/places" element={<PlacesPage />} />
-        <Route path="/npcs" element={<NpcListPage />} />
-        <Route path="/npcs/:npcId" element={<NpcDetailPage />} />
-        <Route path="/search" element={<SearchPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <div
+      style={{
+        backgroundImage: `url(${woodTexture})`,
+        backgroundSize: "cover",
+        backgroundRepeat: "no-repeat",
+        backgroundAttachment: "fixed",
+        backgroundPosition: "center center",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <div
+        style={{
+          paddingBottom: "2rem",
+        }}
+      >
+        <Routes>
+          <Route element={<AppShell />}>
+            <Route path="/" element={<CampaignDashboardPage />} />
+            <Route path="/campaigns" element={<CampaignSelector />} />
+            <Route path="/sessions" element={<SessionsListPage />} />
+            <Route path="/sessions/:sessionId" element={<SessionDetailPage />} />
+            <Route
+              path="/session/:sessionId/live"
+              element={<SessionLivePage />}
+            />
+            <Route
+              path="/campaign/:campaignId/places"
+              element={<PlacesPage />}
+            />
+            <Route path="/npcs" element={<NpcListPage />} />
+            <Route path="/npcs/:npcId" element={<NpcDetailPage />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </div>
   );
 }

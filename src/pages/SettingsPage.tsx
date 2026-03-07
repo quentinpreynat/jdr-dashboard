@@ -66,28 +66,40 @@ export function SettingsPage() {
   };
 
   return (
-    <section className="space-y-4">
+    <section
+      className="space-y-6 p-6"
+      style={{
+        background: "linear-gradient(160deg, #fdf6e3, #f5e6c0)",
+        border: "2px solid #8b5e2a",
+        borderRadius: "2px 12px 2px 12px",
+        boxShadow: "4px 4px 20px rgba(0,0,0,0.25)",
+      }}
+    >
       <div>
-        <h2 className="text-2xl font-semibold">Paramètres</h2>
-        <p className="text-sm text-amber-950/80">
+        <h2 className="page-title">Paramètres</h2>
+        <p className="page-subtitle">
           Actions utilitaires pour ce MVP local.
         </p>
       </div>
 
-      <div className="card">
-        <h3 className="text-lg font-semibold">Sauvegarde</h3>
+      <div className="section-card">
+        <h3 className="section-card-title">Sauvegarde</h3>
         <p className="mb-3 mt-1 text-sm text-amber-950/80">
           Exportez vos données pour les conserver, puis importez-les pour
           restaurer une sauvegarde.
         </p>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={onExport} className="btn btn-subtle">
+          <button
+            type="button"
+            onClick={onExport}
+            className="btn-outline-medieval"
+          >
             Exporter les données
           </button>
           <button
             type="button"
             onClick={onImportClick}
-            className="btn btn-subtle"
+            className="btn-outline-medieval"
           >
             Importer une sauvegarde
           </button>
@@ -104,8 +116,8 @@ export function SettingsPage() {
         )}
       </div>
 
-      <div className="card">
-        <h3 className="text-lg font-semibold">Affichage</h3>
+      <div className="section-card">
+        <h3 className="section-card-title">Affichage</h3>
         <p className="mb-3 mt-1 text-sm text-amber-950/80">
           Réduit l’éblouissement sur iPad pendant la partie.
         </p>
@@ -120,8 +132,8 @@ export function SettingsPage() {
         </label>
       </div>
 
-      <div className="card">
-        <h3 className="text-lg font-semibold">Générateur de situation imprévue</h3>
+      <div className="section-card">
+        <h3 className="section-card-title">Générateur de situation imprévue</h3>
         <p className="mb-3 mt-1 text-sm text-amber-950/80">
           Affiche un bouton “🎲 Situation imprévue” sous les choix de la scène
           (Session Live).
@@ -139,8 +151,8 @@ export function SettingsPage() {
         </label>
       </div>
 
-      <div className="card">
-        <h3 className="text-lg font-semibold">Gestion des données</h3>
+      <div className="section-card">
+        <h3 className="section-card-title">Gestion des données</h3>
         <p className="mb-3 mt-1 text-sm text-amber-950/80">
           Réinitialiser toutes les données de campagne, de session et de PNJ aux
           valeurs de démo.
@@ -155,7 +167,7 @@ export function SettingsPage() {
               resetDemoData();
             }
           }}
-          className="btn btn-danger"
+          className="btn-danger-medieval"
         >
           Réinitialiser les données de démo
         </button>

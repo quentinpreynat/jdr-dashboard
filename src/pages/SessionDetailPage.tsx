@@ -49,17 +49,33 @@ export function SessionDetailPage() {
   }
 
   return (
-    <section className="space-y-6">
+    <section
+      className="space-y-6 p-6"
+      style={{
+        background: "linear-gradient(160deg, #fdf6e3, #f5e6c0)",
+        border: "2px solid #8b5e2a",
+        borderRadius: "2px 12px 2px 12px",
+        boxShadow: "4px 4px 20px rgba(0,0,0,0.25)",
+      }}
+    >
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-2xl font-semibold">Détails de la session</h2>
+        <h2
+          className="text-2xl font-semibold"
+          style={{ fontFamily: "'Uncial Antiqua', serif", color: "#1e1005" }}
+        >
+          Détails de la session
+        </h2>
         <div className="flex flex-wrap gap-2">
-          <Link to={`/session/${sessionId}/live`} className="btn btn-subtle">
+          <Link
+            to={`/session/${sessionId}/live`}
+            className="btn-open-session-live"
+          >
             Open Session Live
           </Link>
           <button
             type="button"
             onClick={() => addScene(sessionId)}
-            className="btn btn-primary"
+            className="btn-add-scene"
           >
             Ajouter une scène
           </button>
@@ -68,7 +84,12 @@ export function SessionDetailPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Titre</span>
+          <span
+            className="text-xs font-medium uppercase tracking-wider"
+            style={{ fontFamily: "'Cinzel', serif", color: "#7a5c2a" }}
+          >
+            Titre
+          </span>
           <input
             value={session.title}
             onChange={(event) =>
@@ -78,7 +99,12 @@ export function SessionDetailPage() {
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Objectif</span>
+          <span
+            className="text-xs font-medium uppercase tracking-wider"
+            style={{ fontFamily: "'Cinzel', serif", color: "#7a5c2a" }}
+          >
+            Objectif
+          </span>
           <input
             value={session.objective}
             onChange={(event) =>
@@ -90,7 +116,12 @@ export function SessionDetailPage() {
       </div>
 
       <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Notes du MJ</span>
+        <span
+          className="text-xs font-medium uppercase tracking-wider"
+          style={{ fontFamily: "'Cinzel', serif", color: "#7a5c2a" }}
+        >
+          Notes du MJ
+        </span>
         <textarea
           rows={5}
           value={session.notes}
@@ -101,8 +132,10 @@ export function SessionDetailPage() {
         />
       </label>
 
-      <div className="card card-compact space-y-3">
-        <h3 className="text-lg font-semibold">Scènes</h3>
+      <div className="space-y-3 rounded-[8px] border-2 border-[#8b5e2a] bg-[#f0d9a0] p-6 shadow-[4px_4px_16px_rgba(0,0,0,0.4)]">
+        <h3 className="mb-4 border-b-2 border-[#8b5e2a] pb-2 font-cinzel text-[1.1rem] font-semibold tracking-[0.15em] text-[#2c1a08] uppercase">
+          Scènes
+        </h3>
         <ul className="space-y-3">
           {session.scenes.map((scene) => (
             <SceneEditor

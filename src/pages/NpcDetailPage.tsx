@@ -39,9 +39,17 @@ export function NpcDetailPage() {
   );
 
   return (
-    <section className="space-y-4">
+    <section
+      className="space-y-6 p-6"
+      style={{
+        background: "linear-gradient(160deg, #fdf6e3, #f5e6c0)",
+        border: "2px solid #8b5e2a",
+        borderRadius: "2px 12px 2px 12px",
+        boxShadow: "4px 4px 20px rgba(0,0,0,0.25)",
+      }}
+    >
       <div className="flex items-center gap-2">
-        <h2 className="text-2xl font-semibold">Détails du PNJ</h2>
+        <h2 className="page-title">Détails du PNJ</h2>
         <span className={`${attitudeClasses[npc.attitude]} px-2 py-1`}>
           {attitudeLabels[npc.attitude]}
         </span>
@@ -49,7 +57,7 @@ export function NpcDetailPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Nom</span>
+          <span className="field-label">Nom</span>
           <input
             value={npc.name}
             onChange={(event) => updateNpc(npcId, { name: event.target.value })}
@@ -57,7 +65,7 @@ export function NpcDetailPage() {
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Rôle</span>
+          <span className="field-label">Rôle</span>
           <input
             value={npc.role}
             onChange={(event) => updateNpc(npcId, { role: event.target.value })}
@@ -67,7 +75,7 @@ export function NpcDetailPage() {
       </div>
 
       <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Attitude</span>
+        <span className="field-label">Attitude</span>
         <select
           value={npc.attitude}
           onChange={(event) =>
@@ -83,7 +91,7 @@ export function NpcDetailPage() {
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Lieu</span>
+        <span className="field-label">Lieu</span>
         <input
           value={npc.locationText}
           onChange={(event) =>
@@ -94,7 +102,7 @@ export function NpcDetailPage() {
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Description</span>
+        <span className="field-label">Description</span>
         <textarea
           rows={5}
           value={npc.description}
@@ -106,7 +114,7 @@ export function NpcDetailPage() {
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Notes du MJ</span>
+        <span className="field-label">Notes du MJ</span>
         <textarea
           rows={5}
           value={npc.notes}
@@ -115,15 +123,16 @@ export function NpcDetailPage() {
         />
       </label>
 
-      <div className="card card-compact">
-        <h3 className="text-lg font-semibold">Apparitions</h3>
+      <div className="section-card">
+        <h3 className="section-card-title">Apparitions</h3>
         <p className="text-sm text-amber-950/80">Lecture seule.</p>
         <div className="mt-3 space-y-2">
           {appearances.map(({ session, scene }) => (
             <Link
               key={scene.id}
               to={`/sessions/${session.id}`}
-              className="text-oak underline"
+              className="item-card block text-sm"
+              style={{ color: "#7a1a1a", textDecoration: "none" }}
             >
               {session.title || "Session sans titre"} —{" "}
               {scene.title || "Scène sans titre"}

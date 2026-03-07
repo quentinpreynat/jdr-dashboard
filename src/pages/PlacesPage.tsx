@@ -51,19 +51,35 @@ export function PlacesPage() {
   }, [data.sessions, selectedPlaceId]);
 
   return (
-    <section className="space-y-6">
+    <section
+      className="space-y-6 p-6"
+      style={{
+        background: "linear-gradient(160deg, #fdf6e3, #f5e6c0)",
+        border: "2px solid #8b5e2a",
+        borderRadius: "2px 12px 2px 12px",
+        boxShadow: "4px 4px 20px rgba(0,0,0,0.25)",
+      }}
+    >
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-amber-900/60">
+          <p
+            className="text-xs uppercase tracking-[0.2em] text-amber-900/60"
+            style={{
+              fontFamily: "'Cinzel', serif",
+              fontSize: "0.7rem",
+              letterSpacing: "0.15em",
+              color: "#7a5c2a",
+            }}
+          >
             Campagne
           </p>
-          <h2 className="text-2xl font-semibold">Lieux</h2>
-          <p className="text-sm text-amber-950/70">
+          <h2 className="page-title">Lieux</h2>
+          <p className="page-subtitle">
             Référentiel des lieux de la campagne.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/" className="btn btn-subtle">
+          <Link to="/" className="btn-outline-medieval">
             Retour campagne
           </Link>
           <button
@@ -81,7 +97,7 @@ export function PlacesPage() {
                 setSelectedPlaceId(placeId);
               }
             }}
-            className="btn btn-primary"
+            className="btn-gold-medieval"
           >
             Nouveau lieu
           </button>
@@ -95,8 +111,8 @@ export function PlacesPage() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
-        <aside className="card card-compact space-y-3">
-          <h3 className="text-lg font-semibold">Liste</h3>
+        <aside className="section-card">
+          <h3 className="section-card-title">Liste</h3>
           <div className="space-y-2">
             {places.map((place) => (
               <button
@@ -104,11 +120,11 @@ export function PlacesPage() {
                 id={`place-${place.id}`}
                 type="button"
                 onClick={() => setSelectedPlaceId(place.id)}
-                className={`w-full rounded-md border px-3 py-2 text-left text-sm transition ${
+                className={
                   place.id === selectedPlaceId
-                    ? "border-amber-900/40 bg-amber-100 text-amber-950"
-                    : "border-amber-900/20 bg-white/70 text-amber-950/80 hover:bg-amber-50"
-                }`}
+                    ? "item-card-active w-full text-left"
+                    : "item-card w-full text-left"
+                }
               >
                 <p className="font-medium">{place.name || "Lieu sans nom"}</p>
                 {place.region && (
@@ -133,9 +149,9 @@ export function PlacesPage() {
 
           {selectedPlace && (
             <>
-              <section className="card space-y-4">
+              <section className="section-card space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="text-lg font-semibold">Détails</h3>
+                  <h3 className="section-card-title">Détails</h3>
                   <button
                     type="button"
                     onClick={() => {
@@ -146,14 +162,14 @@ export function PlacesPage() {
                         }
                       }
                     }}
-                    className="btn btn-danger"
+                    className="btn-danger-medieval"
                   >
                     Supprimer
                   </button>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="flex flex-col gap-1">
-                    <span className="text-sm font-medium">Nom</span>
+                    <span className="field-label">Nom</span>
                     <input
                       value={selectedPlace.name}
                       onChange={(event) =>
@@ -167,7 +183,7 @@ export function PlacesPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-sm font-medium">Région</span>
+                    <span className="field-label">Région</span>
                     <input
                       value={selectedPlace.region ?? ""}
                       onChange={(event) =>
@@ -182,7 +198,7 @@ export function PlacesPage() {
                   </label>
                 </div>
                 <label className="flex flex-col gap-1">
-                  <span className="text-sm font-medium">Description</span>
+                  <span className="field-label">Description</span>
                   <textarea
                     rows={4}
                     value={selectedPlace.description ?? ""}
@@ -198,14 +214,14 @@ export function PlacesPage() {
                 </label>
               </section>
 
-              <section className="card space-y-3">
-                <h3 className="text-lg font-semibold">Scènes liées</h3>
+              <section className="section-card space-y-3">
+                <h3 className="section-card-title">Scènes liées</h3>
                 <div className="space-y-2">
                   {linkedScenes.map(({ session, scene }) => (
                     <Link
                       key={scene.id}
                       to={`/sessions/${session.id}?scene=${scene.id}`}
-                      className="block rounded-md border border-amber-900/20 bg-white/70 px-3 py-2 text-sm hover:bg-amber-50"
+                      className="item-card block text-sm"
                     >
                       <p className="font-medium">
                         {scene.title || "Scène sans titre"}

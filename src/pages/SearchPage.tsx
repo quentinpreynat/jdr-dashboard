@@ -163,15 +163,23 @@ export function SearchPage() {
   }, [results]);
 
   return (
-    <section className="space-y-6">
+    <section
+      className="space-y-6 p-6"
+      style={{
+        background: "linear-gradient(160deg, #fdf6e3, #f5e6c0)",
+        border: "2px solid #8b5e2a",
+        borderRadius: "2px 12px 2px 12px",
+        boxShadow: "4px 4px 20px rgba(0,0,0,0.25)",
+      }}
+    >
       <div>
-        <h2 className="text-2xl font-semibold">Recherche</h2>
-        <p className="text-sm text-amber-950/70">PNJ, sessions et scènes.</p>
+        <h2 className="page-title">Recherche</h2>
+        <p className="page-subtitle">PNJ, sessions et scènes.</p>
       </div>
 
-      <div className="card card-muted">
+      <div className="section-card">
         <label className="flex flex-col gap-2">
-          <span className="text-sm font-medium">Rechercher</span>
+          <span className="field-label">Rechercher</span>
           <input
             autoFocus
             value={query}
@@ -194,10 +202,10 @@ export function SearchPage() {
 
       {grouped.npc.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold">PNJ</h3>
+          <h3 className="section-card-title">PNJ</h3>
           <ul className="space-y-2">
             {grouped.npc.map((result) => (
-              <li key={result.id} className="card card-compact">
+              <li key={result.id} className="item-card">
                 <Link to={result.href} className="block">
                   <p className="font-medium">{result.title}</p>
                   {result.subtitle && (
@@ -219,10 +227,10 @@ export function SearchPage() {
 
       {grouped.session.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold">Sessions</h3>
+          <h3 className="section-card-title">Sessions</h3>
           <ul className="space-y-2">
             {grouped.session.map((result) => (
-              <li key={result.id} className="card card-compact">
+              <li key={result.id} className="item-card">
                 <Link to={result.href} className="block">
                   <p className="font-medium">{result.title}</p>
                   {result.subtitle && (
@@ -244,10 +252,10 @@ export function SearchPage() {
 
       {grouped.scene.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold">Scènes</h3>
+          <h3 className="section-card-title">Scènes</h3>
           <ul className="space-y-2">
             {grouped.scene.map((result) => (
-              <li key={result.id} className="card card-compact">
+              <li key={result.id} className="item-card">
                 <Link to={result.href} className="block">
                   <p className="font-medium">{result.title}</p>
                   {result.subtitle && (
@@ -269,10 +277,10 @@ export function SearchPage() {
 
       {grouped.place.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold">Lieux</h3>
+          <h3 className="section-card-title">Lieux</h3>
           <ul className="space-y-2">
             {grouped.place.map((result) => (
-              <li key={result.id} className="card card-compact">
+              <li key={result.id} className="item-card">
                 <Link to={result.href} className="block">
                   <p className="font-medium">{result.title}</p>
                   {result.subtitle && (

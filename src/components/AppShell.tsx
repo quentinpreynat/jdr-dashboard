@@ -3,14 +3,10 @@ import { useEffect, useState } from "react";
 import { useAppData } from "../state/AppDataContext";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }): string =>
-  `flex min-h-11 items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-    isActive
-      ? "bg-[var(--accent-gold)] text-[var(--ink)]"
-      : "text-[var(--ink)] opacity-90 hover:bg-[rgba(241,229,208,0.55)] hover:opacity-100"
-  }`;
+  isActive ? "nav-link-active" : "nav-link-inactive";
 
 export function AppShell() {
-  const { data, resetDemoData, lastSavedAt } = useAppData();
+  const { data, lastSavedAt } = useAppData();
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const location = useLocation();
   const isLiveMode =
@@ -32,14 +28,14 @@ export function AppShell() {
     };
   }, []);
 
-  const onReset = () => {
+  /*
     const confirmed = window.confirm(
       "Réinitialiser toutes les données locales avec les valeurs de démo ?",
     );
     if (confirmed) {
       resetDemoData();
     }
-  };
+  */
 
   if (isLiveMode) {
     return (
@@ -52,30 +48,63 @@ export function AppShell() {
   }
 
   return (
-    <div className="min-h-screen bg-transparent text-[var(--ink)]">
-      <header className="border-b border-[#b89a6a]/60 bg-[rgba(241,229,208,0.82)] backdrop-blur-sm">
+    <div
+      className="text-ink"
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "transparent",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <header className="bg-[#2c1a08] shadow-[inset_0_-4px_12px_rgba(0,0,0,0.5)] border-b-2 border-[#c9962a] backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="font-cinzel text-xl font-semibold tracking-wide">
+            <h1
+              className="text-xl font-semibold"
+              style={{ fontFamily: "'Uncial Antiqua', serif", color: "#c9962a" }}
+            >
               L&apos;Anneau Unique - Carnet du MJ
             </h1>
-            <p className="text-xs opacity-80">
+            <p
+              className="text-sm"
+              style={{
+                fontFamily: "'Crimson Text', serif",
+                color: "#a08040",
+                fontStyle: "italic",
+              }}
+            >
               Application web locale - jalon 1
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs opacity-80">
+
+          <div className="flex flex-wrap items-center gap-2 text-xs">
             {!isOnline && (
               <span className="badge badge-hostile px-2 py-1">Hors ligne</span>
             )}
-            <span>{savedLabel}</span>
+            <span
+              style={{
+                color: "#8b6914",
+                fontStyle: "italic",
+                fontFamily: "'Crimson Text', serif",
+              }}
+            >
+              {savedLabel}
+            </span>
           </div>
-          <button type="button" onClick={onReset} className="btn btn-subtle">
+
+          {/*
+            type="button"
+            onClick={onReset}
+            className="btn-medieval btn-medieval-outline min-h-11 px-3 py-2 text-sm"
+          >
             Réinitialiser les données de démo
-          </button>
+          */}
         </div>
-        <nav className="mx-auto flex max-w-6xl gap-2 px-4 pb-3 lg:hidden">
+
+        <nav className="mx-auto flex max-w-6xl gap-2 bg-[#f0d9a0] px-4 pb-3 pt-3 lg:hidden border-t border-[#8b5e2a]">
           <NavLink to="/campaigns" className={navLinkClass}>
-            Campagnes
+            Univers
           </NavLink>
           <NavLink to="/" end className={navLinkClass}>
             Campagne
@@ -101,37 +130,75 @@ export function AppShell() {
         </nav>
       </header>
 
-      <div className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-4 lg:grid-cols-[220px_1fr]">
-        <aside className="card hidden lg:block">
-          <nav className="flex gap-2 md:flex-col">
+      <div className="gold-separator">
+        <span>✦</span>
+      </div>
+
+      <div
+        className="app-container mx-auto grid w-full max-w-6xl gap-4 px-4 py-4 lg:grid-cols-[220px_1fr] min-h-0"
+        style={{ flex: 1, backgroundColor: "transparent" }}
+      >
+        <aside
+          className="hidden lg:block rounded-lg p-3 shadow-sm"
+          style={{
+            background: "linear-gradient(180deg, #2c1a08 0%, #1a0f02 100%)",
+            border: "2px solid #8a6010",
+            borderRadius: "2px 10px 2px 10px",
+            boxShadow: "3px 3px 14px rgba(0,0,0,0.4)",
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "'Uncial Antiqua', serif",
+              color: "#8a6010",
+              fontSize: "0.65rem",
+              letterSpacing: "0.15em",
+              textTransform: "uppercase",
+              padding: "0.5rem 1rem",
+              marginBottom: "0.5rem",
+              borderBottom: "1px solid rgba(138,96,16,0.3)",
+            }}
+          >
+            Navigation
+          </p>
+          <nav className="flex flex-col">
             <NavLink to="/campaigns" className={navLinkClass}>
-              Campagnes
+              🌍 Univers
             </NavLink>
             <NavLink to="/" end className={navLinkClass}>
-              Campagne
+              📜 Campagne
             </NavLink>
             <NavLink to="/sessions" className={navLinkClass}>
-              Sessions
+              ⚔️ Sessions
             </NavLink>
             <NavLink to="/npcs" className={navLinkClass}>
-              PNJ
+              🎭 PNJ
             </NavLink>
             <NavLink
               to={`/campaign/${data.campaign.id}/places`}
               className={navLinkClass}
             >
-              Lieux
+              🏰 Lieux
             </NavLink>
             <NavLink to="/search" className={navLinkClass}>
-              Recherche
+              🔍 Recherche
             </NavLink>
             <NavLink to="/settings" className={navLinkClass}>
-              Paramètres
+              ⚙️ Paramètres
             </NavLink>
           </nav>
         </aside>
 
-        <main className="card">
+        <main
+          className="self-start"
+          style={{
+            background: "transparent",
+            border: "none",
+            boxShadow: "none",
+            padding: "0",
+            minHeight: "calc(100vh - 140px)",
+          }}
+        >
           <Outlet />
         </main>
       </div>

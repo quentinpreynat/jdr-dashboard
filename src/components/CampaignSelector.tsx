@@ -27,16 +27,24 @@ export function CampaignSelector() {
   };
 
   return (
-    <section className="space-y-4">
+    <section
+      className="space-y-6 p-6"
+      style={{
+        background: "linear-gradient(160deg, #fdf6e3, #f5e6c0)",
+        border: "2px solid #8b5e2a",
+        borderRadius: "2px 12px 2px 12px",
+        boxShadow: "4px 4px 20px rgba(0,0,0,0.25)",
+      }}
+    >
       <div>
-        <h2 className="text-2xl font-semibold">Campagnes</h2>
-        <p className="text-sm text-amber-950/80">
-          Sélectionnez une campagne active ou créez-en une nouvelle.
+        <h2 className="page-title">Univers</h2>
+        <p className="page-subtitle">
+          Sélectionnez un univers actif ou créez-en un nouveau.
         </p>
       </div>
 
-      <div className="card card-compact space-y-3">
-        <h3 className="text-lg font-semibold">Liste des campagnes</h3>
+      <div className="section-card space-y-3">
+        <h3 className="section-card-title">Liste des campagnes</h3>
         <ul className="space-y-2">
           {sorted.map((campaign) => {
             const isActive = currentCampaign?.id === campaign.id;
@@ -48,11 +56,11 @@ export function CampaignSelector() {
                     selectCampaign(campaign.id);
                     navigate("/");
                   }}
-                  className={`flex-1 rounded-xl border px-3 py-2 text-left text-sm transition-colors ${
+                  className={
                     isActive
-                      ? "border-[#b89a6a] bg-[rgba(217,181,109,0.35)] font-semibold"
-                      : "border-[#b89a6a]/70 bg-[rgba(241,229,208,0.75)] hover:bg-[rgba(241,229,208,0.92)]"
-                  }`}
+                      ? "item-card-active flex-1 text-left text-sm"
+                      : "item-card flex-1 text-left text-sm"
+                  }
                 >
                   {campaign.title}
                 </button>
@@ -67,7 +75,7 @@ export function CampaignSelector() {
                       navigate("/");
                     }
                   }}
-                  className="btn btn-danger px-3 text-sm"
+                  className="btn-danger-medieval px-3 text-sm"
                   disabled={campaigns.length <= 1}
                   title={
                     campaigns.length <= 1
@@ -88,16 +96,22 @@ export function CampaignSelector() {
         </ul>
       </div>
 
-      <div className="card card-compact space-y-3">
-        <h3 className="text-lg font-semibold">Nouvelle campagne</h3>
+      <div className="section-card space-y-3">
+        <h3 className="section-card-title">Nouvelle campagne</h3>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             placeholder={defaultNewCampaignTitle(campaigns.length)}
-            className="min-h-11 flex-1 rounded-xl border border-[#b89a6a]/70 bg-[rgba(241,229,208,0.9)] px-3 py-2 text-sm text-[var(--ink)] placeholder:text-[rgba(58,46,31,0.65)]"
+            className="min-h-11 flex-1 rounded-xl px-3 py-2 text-sm"
+            style={{
+              background: "#fdf6e3",
+              border: "1px solid #8b5e2a",
+              borderRadius: "2px 8px 2px 8px",
+              color: "#1e1005",
+            }}
           />
-          <button type="button" onClick={onCreate} className="btn btn-primary">
+          <button type="button" onClick={onCreate} className="btn-gold-medieval">
             Créer
           </button>
         </div>

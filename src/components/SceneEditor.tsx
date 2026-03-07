@@ -86,19 +86,25 @@ export function SceneEditor({
   return (
     <li
       id={`scene-${scene.id}`}
-      className={`mb-3 rounded-md border border-stone-300 bg-gradient-to-b from-stone-100 to-stone-200 p-4 shadow-sm backdrop-blur-[1px] transition hover:shadow-md ${
+      className={`mb-4 rounded-[6px] border border-[#c9962a] bg-[#faf3e0] p-4 shadow-[2px_2px_8px_rgba(0,0,0,0.15)] transition ${
         highlight ? "ring-2 ring-stone-500/40" : ""
       }`}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h4 className="font-serif text-lg font-semibold tracking-wide text-stone-900">
+          <h4 className="font-cinzel text-[1rem] font-bold text-[#2c1a08]">
             {scene.title?.trim() || "Scene sans titre"}
           </h4>
           <p className="mt-1 text-sm text-stone-600">{metaSummary}</p>
-          <p className="mt-2 line-clamp-2 text-sm text-stone-800">{textPreview}</p>
+          <p className="font-garamond mt-2 line-clamp-2 text-[0.9rem] italic text-[#5c3d1a]">
+            {textPreview}
+          </p>
         </div>
-        <button type="button" onClick={onDelete} className="btn btn-danger">
+        <button
+          type="button"
+          onClick={onDelete}
+          className="rounded-[4px] border border-[#6b0f0f] bg-[#8b1a1a] px-[0.8rem] py-[0.4rem] font-cinzel text-[0.75rem] text-[#f5e6c8] transition-colors hover:bg-[#a0341a]"
+        >
           Supprimer
         </button>
       </div>

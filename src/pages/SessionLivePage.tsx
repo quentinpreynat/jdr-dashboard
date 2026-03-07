@@ -473,18 +473,18 @@ export function SessionLivePage() {
   return (
     <section
       ref={containerRef}
-      className={`session-live h-screen w-full overflow-x-hidden ${isDimMode ? "is-dim" : ""}`}
+      className={`session-live h-screen w-full overflow-x-hidden bg-transparent ${isDimMode ? "is-dim" : ""}`}
     >
       {showImprovisation && (
         <ImprovisationModal onClose={() => setShowImprovisation(false)} />
       )}
       <div className="space-y-6 py-5">
-        <header className="flex flex-wrap items-center justify-between gap-3 px-6">
+        <header className="relative flex flex-wrap items-center justify-between gap-3 px-6">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-stone-600">
+            <p className="text-xs uppercase tracking-[0.2em] text-amber-700/80 font-cinzel">
               Session Live
             </p>
-            <h2 className="text-2xl font-semibold">
+            <h2 className="text-2xl font-semibold font-cinzel text-amber-950">
               {session.title || "Session sans titre"}
             </h2>
             <p className="text-sm text-stone-700">
@@ -508,9 +508,19 @@ export function SessionLivePage() {
             >
               🔍
             </button>
-            <Link to={`/sessions/${sessionId}`} className="btn btn-subtle">
+            <Link to={`/sessions/${sessionId}`} className="rounded-md border border-amber-800/50 bg-amber-900/80 px-3 py-2 text-sm text-amber-100 hover:bg-amber-800 font-cinzel tracking-wide">
               Retour aux détails
             </Link>
+          </div>
+          <div className="absolute top-3 right-20 pointer-events-none select-none" aria-hidden="true">
+            <div style={{
+              fontSize: '1.5rem',
+              animation: 'flicker 2s ease-in-out infinite alternate',
+              filter: 'drop-shadow(0 0 6px rgba(255, 180, 50, 0.8))',
+              transformOrigin: 'bottom center',
+            }}>
+              🕯️
+            </div>
           </div>
         </header>
 
@@ -533,11 +543,11 @@ export function SessionLivePage() {
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-stone-600">
+                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-amber-700 font-cinzel">
                     Scène sélectionnée
                   </p>
                   <div className="flex flex-wrap items-center gap-3">
-                    <h4 className="text-lg font-semibold">
+                    <h4 className="text-lg font-semibold font-cinzel text-amber-950 tracking-wide">
                       {selectedSceneTitle}
                     </h4>
                   </div>
@@ -565,9 +575,11 @@ export function SessionLivePage() {
               </div>
 
               <div className="mt-6 flex min-h-0 flex-col space-y-8 overflow-y-auto pr-1">
-                <section className="live-card p-4 sm:p-5">
-                  <p className="live-label">Texte de scène</p>
-                  <h5 className="text-2xl font-semibold tracking-wide text-stone-900 mb-6">
+                <section className="rounded-lg border-2 border-amber-800/50 card-parchment card-gold-border p-5 shadow-[4px_4px_16px_rgba(0,0,0,0.25)]">
+                  <p className="text-xs uppercase tracking-[0.15em] text-amber-800/70 font-cinzel mb-1">
+                    Texte de scène
+                  </p>
+                  <h5 className="text-2xl font-semibold tracking-wide text-amber-950 mb-6 font-cinzel border-b border-amber-800/30 pb-3">
                     {selectedSceneTitle}
                   </h5>
                   <div className="parchment-text text-base leading-relaxed text-stone-800 whitespace-pre-line">
@@ -575,8 +587,8 @@ export function SessionLivePage() {
                   </div>
                 </section>
 
-                <section className="rounded-lg border border-stone-300 bg-white/40 p-3 sm:p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-stone-600">
+                <section className="rounded-lg border-2 border-amber-800/50 card-parchment p-4 shadow-[4px_4px_16px_rgba(0,0,0,0.25)] relative card-medieval">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/70 font-cinzel">
                     Choix
                   </p>
                   {(() => {
@@ -707,7 +719,7 @@ export function SessionLivePage() {
 
                   {settings.improvisationEnabled && (
                     <button
-                      className="mt-6 w-full rounded border border-amber-700 bg-amber-100 px-4 py-2 font-semibold text-amber-900 shadow transition hover:bg-amber-200"
+                      className="mt-6 w-full rounded-lg border-2 border-amber-800 bg-gradient-to-b from-amber-700 to-amber-900 px-4 py-3 font-semibold text-amber-100 shadow-lg transition hover:from-amber-600 hover:to-amber-800 font-cinzel tracking-wide"
                       onClick={() => setShowImprovisation(true)}
                       type="button"
                     >
@@ -717,8 +729,8 @@ export function SessionLivePage() {
                 </section>
 
                 <div className="grid gap-3 lg:grid-cols-2">
-                  <section className="rounded-lg border border-stone-300 bg-white/40 p-3 sm:p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-stone-600">
+                  <section className="rounded-lg border-2 border-amber-800/50 card-parchment p-4 shadow-[4px_4px_16px_rgba(0,0,0,0.25)] relative card-medieval">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/70 font-cinzel">
                       Personnages
                     </p>
                     <div className="mt-2 space-y-2">
@@ -760,9 +772,9 @@ export function SessionLivePage() {
                     </div>
                   </section>
 
-                  <section className="rounded-lg border border-stone-300 bg-white/40 p-3 sm:p-4">
+                  <section className="rounded-lg border-2 border-amber-800/50 card-parchment p-4 shadow-[4px_4px_16px_rgba(0,0,0,0.25)] relative card-medieval">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-stone-600">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/70 font-cinzel">
                         Notes
                       </p>
                     </div>
@@ -865,7 +877,7 @@ export function SessionLivePage() {
                       <button
                         type="button"
                         onClick={handleAddNote}
-                        className="btn btn-primary flex-shrink-0"
+                        className="flex-shrink-0 rounded-lg border border-amber-800/60 bg-gradient-to-b from-amber-700 to-amber-900 px-4 py-2 text-sm font-semibold text-amber-100 shadow transition hover:from-amber-600 hover:to-amber-800"
                       >
                         Ajouter
                       </button>
@@ -880,7 +892,7 @@ export function SessionLivePage() {
         </div>
 
         <div
-          className="fixed right-0 top-[72px] z-40 h-[calc(100vh-72px)] border-l border-stone-300 bg-stone-200/70 backdrop-blur-sm flex flex-col p-3"
+          className="panel-wood fixed right-0 top-[72px] z-40 h-[calc(100vh-72px)] flex flex-col p-2 gap-1"
           style={{
             width: rightPanelWidth,
             transition: "width 240ms ease",
@@ -899,8 +911,8 @@ export function SessionLivePage() {
                 aria-controls="right-panel-scenes"
                 className={`menu-toggle relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
                   rightPanelTab === "scenes"
-                    ? "border-stone-500 bg-stone-100"
-                    : "border-stone-300 bg-stone-200 hover:bg-stone-100"
+                    ? "border-amber-600 bg-amber-800/60 text-amber-100"
+                    : "border-amber-800/40 bg-amber-900/30 hover:bg-amber-800/50 text-amber-200"
                 }`}
               >
                 {rightPanelTab === "scenes" && (
@@ -917,7 +929,7 @@ export function SessionLivePage() {
                     🎬
                   </span>
                   {!isRightPanelExpanded && (
-                    <span className="text-[10px] font-semibold tracking-wide text-stone-600">
+                    <span className="text-[10px] font-semibold tracking-wide text-amber-300">
                       Sc
                     </span>
                   )}
@@ -989,8 +1001,8 @@ export function SessionLivePage() {
                 aria-controls="right-panel-pcs"
                 className={`menu-toggle relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
                   rightPanelTab === "pcs"
-                    ? "border-stone-500 bg-stone-100"
-                    : "border-stone-300 bg-stone-200 hover:bg-stone-100"
+                    ? "border-amber-600 bg-amber-800/60 text-amber-100"
+                    : "border-amber-800/40 bg-amber-900/30 hover:bg-amber-800/50 text-amber-200"
                 }`}
               >
                 {rightPanelTab === "pcs" && (
@@ -1007,7 +1019,7 @@ export function SessionLivePage() {
                     🧝
                   </span>
                   {!isRightPanelExpanded && (
-                    <span className="text-[10px] font-semibold tracking-wide text-stone-600">
+                    <span className="text-[10px] font-semibold tracking-wide text-amber-300">
                       PJ
                     </span>
                   )}
@@ -1039,7 +1051,7 @@ export function SessionLivePage() {
                 <span className="pointer-events-none absolute left-0 top-0 h-full w-2 bg-stone-500/10" />
                 <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden py-2">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-stone-600">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/70 font-cinzel">
                       Registre des PJ
                     </p>
                     <div className="flex items-center gap-2">
@@ -1301,7 +1313,7 @@ export function SessionLivePage() {
                           ))}
                         </div>
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-stone-600">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/70 font-cinzel">
                             États
                           </p>
                           <div className="mt-2 flex flex-wrap gap-2">
@@ -1368,8 +1380,8 @@ export function SessionLivePage() {
                 aria-controls="right-panel-npcs"
                 className={`menu-toggle relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
                   rightPanelTab === "npcs"
-                    ? "border-stone-500 bg-stone-100"
-                    : "border-stone-300 bg-stone-200 hover:bg-stone-100"
+                    ? "border-amber-600 bg-amber-800/60 text-amber-100"
+                    : "border-amber-800/40 bg-amber-900/30 hover:bg-amber-800/50 text-amber-200"
                 }`}
               >
                 {rightPanelTab === "npcs" && (
@@ -1386,7 +1398,7 @@ export function SessionLivePage() {
                     🎭
                   </span>
                   {!isRightPanelExpanded && (
-                    <span className="text-[10px] font-semibold tracking-wide text-stone-600">
+                    <span className="text-[10px] font-semibold tracking-wide text-amber-300">
                       PNJ
                     </span>
                   )}
@@ -1457,8 +1469,8 @@ export function SessionLivePage() {
                 aria-controls="right-panel-places"
                 className={`menu-toggle relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
                   rightPanelTab === "places"
-                    ? "border-stone-500 bg-stone-100"
-                    : "border-stone-300 bg-stone-200 hover:bg-stone-100"
+                    ? "border-amber-600 bg-amber-800/60 text-amber-100"
+                    : "border-amber-800/40 bg-amber-900/30 hover:bg-amber-800/50 text-amber-200"
                 }`}
               >
                 {rightPanelTab === "places" && (
@@ -1475,7 +1487,7 @@ export function SessionLivePage() {
                     📍
                   </span>
                   {!isRightPanelExpanded && (
-                    <span className="text-[10px] font-semibold tracking-wide text-stone-600">
+                    <span className="text-[10px] font-semibold tracking-wide text-amber-300">
                       Li
                     </span>
                   )}
@@ -1546,8 +1558,8 @@ export function SessionLivePage() {
                 aria-controls="right-panel-items"
                 className={`menu-toggle relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
                   rightPanelTab === "items"
-                    ? "border-stone-500 bg-stone-100"
-                    : "border-stone-300 bg-stone-200 hover:bg-stone-100"
+                    ? "border-amber-600 bg-amber-800/60 text-amber-100"
+                    : "border-amber-800/40 bg-amber-900/30 hover:bg-amber-800/50 text-amber-200"
                 }`}
               >
                 {rightPanelTab === "items" && (
@@ -1564,7 +1576,7 @@ export function SessionLivePage() {
                     🧰
                   </span>
                   {!isRightPanelExpanded && (
-                    <span className="text-[10px] font-semibold tracking-wide text-stone-600">
+                    <span className="text-[10px] font-semibold tracking-wide text-amber-300">
                       Ob
                     </span>
                   )}
@@ -1941,7 +1953,7 @@ export function SessionLivePage() {
                       </p>
                     )}
                     <div className="mt-4 space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-stone-600">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/70 font-cinzel">
                         Scènes (session courante)
                       </p>
                       {quickPlaceScenes.currentSession.length > 0 ? (
