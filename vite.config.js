@@ -7,6 +7,9 @@ export default defineConfig(function () {
     var base = repoName ? "/".concat(repoName, "/") : "/";
     return {
         base: base,
+        server: {
+            host: true
+        },
         plugins: [
             react(),
             VitePWA({

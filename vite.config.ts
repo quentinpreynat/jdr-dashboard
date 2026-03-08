@@ -8,6 +8,9 @@ export default defineConfig(() => {
 
   return {
     base,
+    server: {
+      host: true
+    },
     plugins: [
       react(),
       VitePWA({

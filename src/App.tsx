@@ -25,6 +25,7 @@ export default function App() {
         backgroundRepeat: "no-repeat",
         backgroundAttachment: "fixed",
         backgroundPosition: "center center",
+        backgroundColor: "transparent",
         minHeight: "100vh",
         display: "flex",
         flexDirection: "column",

@@ -1,5 +1,11 @@
 import type { ImprovisationResult } from "../types/improvisation";
 
+export type ImprovisationCategory =
+  | "complet"
+  | "rebondissement"
+  | "pnj"
+  | "complication";
+
 const npcList: string[] = [
   "marchand louche",
   "espion du culte",
@@ -19,6 +25,21 @@ const npcList: string[] = [
   "pêcheur superstitieux",
   "messagère essoufflée",
   "aubergiste aux secrets lourds",
+  "fossoyeur taciturne",
+  "druide errant",
+  "herboriste aveugle",
+  "exilé royal masqué",
+  "mercenaire fanatique",
+  "cartographe paranoïaque",
+  "chanteuse de taverne ensorcelée",
+  "vétéran brisé par la guerre",
+  "apothicaire cupide",
+  "apprenti scribe menteur",
+  "prédicateur apocalyptique",
+  "garde corrompu",
+  "intendant exsangue",
+  "pèlerin silencieux",
+  "spectre lié à une promesse",
 ];
 
 const locationList: string[] = [
@@ -39,6 +60,21 @@ const locationList: string[] = [
   "égouts nauséabonds",
   "colline balayée par le vent",
   "route déserte",
+  "chapelle en cendres",
+  "auberge frappée par la peste",
+  "moulin abandonné",
+  "tour de guet en ruine",
+  "cimetière envahi de ronces",
+  "carrière de pierre maudite",
+  "tunnel effondré",
+  "salle d'audience désertée",
+  "forge éteinte",
+  "entrepôt d'épices scellé",
+  "verger noyé dans le brouillard",
+  "lac noir immobile",
+  "caverne aux échos étranges",
+  "ruines noyées",
+  "sanctuaire profané",
 ];
 
 const eventList: string[] = [
@@ -58,6 +94,21 @@ const eventList: string[] = [
   "chasse à l'homme improvisée",
   "objet maudit repéré",
   "duel provoqué",
+  "alerte aux cloches de la ville",
+  "pont miné s'écroule",
+  "tempête surnaturelle éclate",
+  "exécution publique annulée",
+  "malédiction révélée",
+  "apparition d'un présage",
+  "incursion de bandits",
+  "explosion d'alchimiste",
+  "festival tournant au chaos",
+  "incendie volontaire",
+  "monstre libéré de sa cage",
+  "rituel d'invocation raté",
+  "regard figé par un artefact",
+  "apparition d'un messager royal",
+  "verrou sacré brisé",
 ];
 
 const rumorList: string[] = [
@@ -78,6 +129,20 @@ const rumorList: string[] = [
   "une mine abandonnée a été rouverte en secret",
   "un notable finance des bandits",
   "des lettres anonymes accusent un allié",
+  "un puits murmure la nuit",
+  "un enfant disparu serait encore vivant",
+  "un ancien pacte se réveille",
+  "une malédiction suit une lignée",
+  "des bêtes fuient vers le nord",
+  "un coffre impérial a été détourné",
+  "un mage renégat se cache en ville",
+  "la tour du guet brûle chaque nuit",
+  "un passage vers l'Autre-Monde s'est rouvert",
+  "un spectre protège une tombe oubliée",
+  "des pièces d'or disparaissent des bourses",
+  "un prêtre falsifie les rites",
+  "des armes enchantées circulent",
+  "un conseil secret prépare une purge",
 ];
 
 const complicationList: string[] = [
@@ -97,6 +162,21 @@ const complicationList: string[] = [
   "un messager est intercepté",
   "un plan se retourne contre les PJ",
   "un innocent est accusé",
+  "un serment interdit lie la scène",
+  "une trahison est en cours",
+  "une bourse piégée explose",
+  "un symbole attire des fanatiques",
+  "un double se fait passer pour un allié",
+  "un piège magique se déclenche",
+  "les autorités mentent",
+  "un passage se scelle soudainement",
+  "un allié est pris en otage",
+  "un rituel secondaire s'active",
+  "les preuves disparaissent",
+  "une alarme silencieuse se déclenche",
+  "un gardien s'éveille",
+  "un mensonge remonte à la surface",
+  "l'enquêteur devient suspect",
 ];
 
 function randomFloat(): number {
@@ -119,12 +199,57 @@ export function getRandomItem<T>(array: readonly T[]): T {
   return array[Math.max(0, Math.min(array.length - 1, index))] ?? array[0];
 }
 
+export function generateNpc(): string {
+  return getRandomItem(npcList);
+}
+
+export function generateLocation(): string {
+  return getRandomItem(locationList);
+}
+
+export function generateEvent(): string {
+  return getRandomItem(eventList);
+}
+
+export function generateRumor(): string {
+  return getRandomItem(rumorList);
+}
+
+export function generateComplication(): string {
+  return getRandomItem(complicationList);
+}
+
+export function generateByCategory(
+  category: ImprovisationCategory,
+): Partial<ImprovisationResult> {
+  switch (category) {
+    case "rebondissement":
+      return {
+        event: generateEvent(),
+        complication: generateComplication(),
+      };
+    case "pnj":
+      return {
+        npc: generateNpc(),
+        location: generateLocation(),
+      };
+    case "complication":
+      return {
+        complication: generateComplication(),
+        rumor: generateRumor(),
+      };
+    case "complet":
+    default:
+      return generateImprovisation();
+  }
+}
+
 export function generateImprovisation(): ImprovisationResult {
   return {
-    npc: getRandomItem(npcList),
-    location: getRandomItem(locationList),
-    event: getRandomItem(eventList),
-    rumor: getRandomItem(rumorList),
-    complication: getRandomItem(complicationList),
+    npc: generateNpc(),
+    location: generateLocation(),
+    event: generateEvent(),
+    rumor: generateRumor(),
+    complication: generateComplication(),
   };
 }

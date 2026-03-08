@@ -6,3 +6,12 @@ export interface ImprovisationResult {
   complication: string;
 }
 
+export interface ImprovisationContext {
+  campaignTitle?: string;
+  sessionTitle?: string;
+  sessionObjective?: string;
+  sceneTitle?: string;
+  sceneText?: string;
+  placeName?: string;
+  linkedNpcNames?: string[];
+}

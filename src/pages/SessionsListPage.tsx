@@ -84,17 +84,12 @@ export function SessionsListPage() {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      navigate(`/sessions/${session.id}`);
-                    }}
+                  <Link
+                    to={`/session/${session.id}/live`}
                     className="btn-gold-medieval"
                   >
-                    Ouvrir
-                  </button>
+                    ⚔️ Session Live
+                  </Link>
                   <button
                     type="button"
                     onClick={(event) => {

@@ -110,8 +110,8 @@ export function SessionLivePage() {
   const [rightPanelTab, setRightPanelTab] = useState<
     "scenes" | "npcs" | "places" | "items" | "pcs" | null
   >(null);
-  const RIGHT_PANEL_COLLAPSED_PX = 70;
-  const RIGHT_PANEL_EXPANDED_PX = 140;
+  const RIGHT_PANEL_COLLAPSED_PX = 75;
+  const RIGHT_PANEL_EXPANDED_PX = 160;
   const RIGHT_PANEL_PCS_PX = 360;
   const isRightPanelExpanded = rightPanelTab !== null;
   const rightPanelWidth =
@@ -487,7 +487,7 @@ export function SessionLivePage() {
             borderRadius: "2px 12px 2px 12px",
             padding: "1rem 1.5rem",
             boxShadow: "4px 4px 20px rgba(0,0,0,0.3)",
-            marginRight: '75px',
+            marginRight: `${rightPanelWidth + 5}px`,
           }}
         >
           <div>
@@ -533,7 +533,7 @@ export function SessionLivePage() {
         <div
           className="live-layout mx-auto w-full max-w-[1200px] min-w-0 px-6"
           style={{
-            paddingRight: rightPanelWidth,
+            paddingRight: `${rightPanelWidth + 10}px`,
           }}
         >
           <div
@@ -922,7 +922,7 @@ export function SessionLivePage() {
         </div>
 
         <div
-          className="panel-wood fixed right-0 top-[72px] z-40 h-[calc(100vh-72px)] flex flex-col p-2 gap-1"
+          className="panel-wood fixed right-0 top-0 z-40 h-screen flex flex-col p-2 gap-1"
           style={{
             width: rightPanelWidth,
             transition: "width 240ms ease",
@@ -941,8 +941,8 @@ export function SessionLivePage() {
                 aria-controls="right-panel-scenes"
                 className={`menu-toggle relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
                   rightPanelTab === "scenes"
-                    ? "border-amber-600 bg-amber-800/60 text-amber-100"
-                    : "border-amber-800/40 bg-amber-900/30 hover:bg-amber-800/50 text-amber-200"
+                    ? "border-amber-400 bg-[#7a4500] text-amber-50"
+                    : "border-amber-600/60 bg-[#3d1f00] hover:bg-[#5a2e00] text-amber-100"
                 }`}
               >
                 {rightPanelTab === "scenes" && (
@@ -959,12 +959,12 @@ export function SessionLivePage() {
                     🎬
                   </span>
                   {!isRightPanelExpanded && (
-                    <span className="text-[10px] font-semibold tracking-wide text-amber-300">
+                    <span className="text-[10px] font-semibold tracking-wide text-amber-200">
                       Sc
                     </span>
                   )}
                   {isRightPanelExpanded && (
-                    <span className="w-full truncate text-left text-xs font-medium text-stone-700">
+                    <span className="w-full truncate text-left text-xs font-medium text-amber-100">
                       Scènes
                     </span>
                   )}
@@ -1031,8 +1031,8 @@ export function SessionLivePage() {
                 aria-controls="right-panel-pcs"
                 className={`menu-toggle relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
                   rightPanelTab === "pcs"
-                    ? "border-amber-600 bg-amber-800/60 text-amber-100"
-                    : "border-amber-800/40 bg-amber-900/30 hover:bg-amber-800/50 text-amber-200"
+                    ? "border-amber-400 bg-[#7a4500] text-amber-50"
+                    : "border-amber-600/60 bg-[#3d1f00] hover:bg-[#5a2e00] text-amber-100"
                 }`}
               >
                 {rightPanelTab === "pcs" && (
@@ -1049,12 +1049,12 @@ export function SessionLivePage() {
                     🧝
                   </span>
                   {!isRightPanelExpanded && (
-                    <span className="text-[10px] font-semibold tracking-wide text-amber-300">
+                    <span className="text-[10px] font-semibold tracking-wide text-amber-200">
                       PJ
                     </span>
                   )}
                   {isRightPanelExpanded && (
-                    <span className="w-full truncate text-left text-xs font-medium text-stone-700">
+                    <span className="w-full truncate text-left text-xs font-medium text-amber-100">
                       PJ
                     </span>
                   )}
@@ -1410,8 +1410,8 @@ export function SessionLivePage() {
                 aria-controls="right-panel-npcs"
                 className={`menu-toggle relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
                   rightPanelTab === "npcs"
-                    ? "border-amber-600 bg-amber-800/60 text-amber-100"
-                    : "border-amber-800/40 bg-amber-900/30 hover:bg-amber-800/50 text-amber-200"
+                    ? "border-amber-400 bg-[#7a4500] text-amber-50"
+                    : "border-amber-600/60 bg-[#3d1f00] hover:bg-[#5a2e00] text-amber-100"
                 }`}
               >
                 {rightPanelTab === "npcs" && (
@@ -1428,12 +1428,12 @@ export function SessionLivePage() {
                     🎭
                   </span>
                   {!isRightPanelExpanded && (
-                    <span className="text-[10px] font-semibold tracking-wide text-amber-300">
+                    <span className="text-[10px] font-semibold tracking-wide text-amber-200">
                       PNJ
                     </span>
                   )}
                   {isRightPanelExpanded && (
-                    <span className="w-full truncate text-left text-xs font-medium text-stone-700">
+                    <span className="w-full truncate text-left text-xs font-medium text-amber-100">
                       PNJ
                     </span>
                   )}
@@ -1499,8 +1499,8 @@ export function SessionLivePage() {
                 aria-controls="right-panel-places"
                 className={`menu-toggle relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
                   rightPanelTab === "places"
-                    ? "border-amber-600 bg-amber-800/60 text-amber-100"
-                    : "border-amber-800/40 bg-amber-900/30 hover:bg-amber-800/50 text-amber-200"
+                    ? "border-amber-400 bg-[#7a4500] text-amber-50"
+                    : "border-amber-600/60 bg-[#3d1f00] hover:bg-[#5a2e00] text-amber-100"
                 }`}
               >
                 {rightPanelTab === "places" && (
@@ -1517,12 +1517,12 @@ export function SessionLivePage() {
                     📍
                   </span>
                   {!isRightPanelExpanded && (
-                    <span className="text-[10px] font-semibold tracking-wide text-amber-300">
+                    <span className="text-[10px] font-semibold tracking-wide text-amber-200">
                       Li
                     </span>
                   )}
                   {isRightPanelExpanded && (
-                    <span className="w-full truncate text-left text-xs font-medium text-stone-700">
+                    <span className="w-full truncate text-left text-xs font-medium text-amber-100">
                       Lieux
                     </span>
                   )}
@@ -1588,8 +1588,8 @@ export function SessionLivePage() {
                 aria-controls="right-panel-items"
                 className={`menu-toggle relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
                   rightPanelTab === "items"
-                    ? "border-amber-600 bg-amber-800/60 text-amber-100"
-                    : "border-amber-800/40 bg-amber-900/30 hover:bg-amber-800/50 text-amber-200"
+                    ? "border-amber-400 bg-[#7a4500] text-amber-50"
+                    : "border-amber-600/60 bg-[#3d1f00] hover:bg-[#5a2e00] text-amber-100"
                 }`}
               >
                 {rightPanelTab === "items" && (
@@ -1606,12 +1606,12 @@ export function SessionLivePage() {
                     🧰
                   </span>
                   {!isRightPanelExpanded && (
-                    <span className="text-[10px] font-semibold tracking-wide text-amber-300">
+                    <span className="text-[10px] font-semibold tracking-wide text-amber-200">
                       Ob
                     </span>
                   )}
                   {isRightPanelExpanded && (
-                    <span className="w-full truncate text-left text-xs font-medium text-stone-700">
+                    <span className="w-full truncate text-left text-xs font-medium text-amber-100">
                       Objets
                     </span>
                   )}
@@ -1679,7 +1679,7 @@ export function SessionLivePage() {
         </div>
         <>
           <div
-            className="fixed top-[72px] left-0 right-0 bottom-0 z-40 bg-black/25 backdrop-blur-sm transition-opacity duration-300 motion-reduce:transition-none"
+            className="fixed top-0 left-0 right-0 bottom-0 z-40 bg-black/25 backdrop-blur-sm transition-opacity duration-300 motion-reduce:transition-none"
             style={{
               pointerEvents: isQuickOpen ? "auto" : "none",
               opacity: isQuickOpen ? 1 : 0,
