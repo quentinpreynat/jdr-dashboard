@@ -542,6 +542,13 @@ export function SessionLivePage() {
           >
             <div
               className="grimoire-container flex min-h-0 flex-col"
+                style={{
+                      background: 'linear-gradient(160deg, #fdf6e3, #f0dfa8)',
+                      border: '2px solid #8b5e2a',
+                      borderRadius: '2px 12px 2px 12px',
+                      boxShadow: '4px 4px 20px rgba(0,0,0,0.35)',
+                      padding: '1.5rem',
+                }}
             >
               <div
                 key={selectedScene?.id ?? "empty"}
@@ -554,7 +561,7 @@ export function SessionLivePage() {
                       borderRadius: '2px 12px 2px 12px',
                       padding: '0.75rem 1.25rem',
                       marginBottom: '1rem',
-                      boxShadow: '2px 2px 12px rgba(0,0,0,0.2)',
+                      boxShadow: '0 4px 16px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.2)',
                     }}
                   >
                 <div>
@@ -589,7 +596,7 @@ export function SessionLivePage() {
                 </div>
               </div>
 
-              <div className="mt-6 flex min-h-0 flex-col space-y-8 overflow-y-auto pr-1">
+              <div className="mt-6 flex min-h-0 flex-col space-y-6 overflow-y-auto pr-1">
                 <section className="section-card p-5">
                   <p className="field-label mb-1">
                     Texte de scène
@@ -646,7 +653,7 @@ export function SessionLivePage() {
                               key={choice.id}
                               type="button"
                               disabled={isLocked}
-                              className={`group relative flex w-full flex-col items-center justify-center gap-3 rounded-xl border border-stone-300 bg-stone-100/40 px-6 py-6 text-stone-800 shadow-[0_6px_14px_rgba(67,41,21,0.12)] hover:bg-stone-200/40 transition-all duration-150 ease-out will-change-transform active:scale-[0.98] active:bg-stone-300/40 ${cardClass} ${
+                              className={`group relative flex w-full flex-col items-center justify-center gap-3 rounded-xl border border-[#8b5e2a]/40 bg-[#f5e6c0]/60 px-6 py-6 text-stone-800 shadow-[0_6px_14px_rgba(67,41,21,0.25)] hover:bg-[#e8cc8a]/70 transition-all duration-150 ease-out will-change-transform active:scale-[0.98] active:bg-stone-300/40 ${cardClass} ${
                                 isImportant ? "border-stone-500 bg-stone-100/60" : ""
                               } ${isTaken ? "opacity-60 bg-stone-200/40" : ""} ${
                                 isLocked ? "opacity-50 cursor-not-allowed pointer-events-none" : ""
@@ -743,11 +750,15 @@ export function SessionLivePage() {
                   )}
                 </section>
 
-                <div className="grid gap-3 lg:grid-cols-2">
-                  <section className="section-card p-4 relative">
-                    <p className="field-label mb-1">
-                      Personnages
-                    </p>
+                <div className="grid gap-6 lg:grid-cols-2" style={{ overflow: 'visible' }}>
+                  <section
+                    className="section-card p-4 relative"
+                    style={{
+                      boxShadow:
+                        "0 4px 16px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.2)",
+                    }}
+                  >
+                    <p className="field-label mb-1">Personnages</p>
                     <div className="mt-2 space-y-2">
                       {linkedNpcs.map((npc) => (
                         <button
@@ -787,11 +798,15 @@ export function SessionLivePage() {
                     </div>
                   </section>
 
-                  <section className="section-card p-4 relative">
+                  <section
+                    className="section-card p-4 relative"
+                    style={{
+                      boxShadow:
+                        "0 4px 16px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.2)",
+                    }}
+                  >
                     <div className="flex items-center justify-between">
-                      <p className="field-label mb-1">
-                        Notes
-                      </p>
+                      <p className="field-label mb-1">Notes</p>
                     </div>
                     <div className="mt-2 flex min-h-0 flex-1 flex-col space-y-2 overflow-y-auto pr-1">
                       {selectedScene?.liveNotes?.map((note) => (
@@ -982,10 +997,10 @@ export function SessionLivePage() {
                       key={scene.id}
                       type="button"
                       onClick={() => setSelectedSceneId(scene.id)}
-                      className={`w-full rounded-md border px-2 py-2 text-left text-sm ${
+                      className={`w-full rounded-md border px-2 py-2 text-left text-sm transition-all ${
                         scene.id === selectedSceneId
-                          ? "border-stone-500 bg-stone-100"
-                          : "border-stone-300 bg-white/90 hover:bg-stone-100"
+                          ? "border-[#8b5e2a] bg-[#f5e6c0] font-semibold shadow-[inset_2px_0_0_#c9962a]"
+                          : "border-stone-300 bg-white/90 hover:bg-[#fdf6e3] hover:border-[#c9962a]/50"
                       } ${flashSceneId === scene.id ? "flash-ring" : ""}`}
                     >
                       <div className="font-medium">

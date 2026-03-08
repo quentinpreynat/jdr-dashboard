@@ -224,14 +224,6 @@ html, body, #root {
   color: #7a5c2a;
 }
 
-.section-card {
-  background: linear-gradient(160deg, #fdf6e3, #f5e6c0);
-  border: 2px solid #8b5e2a;
-  border-radius: 2px 12px 2px 12px;
-  box-shadow: 4px 4px 20px rgba(0,0,0,0.25);
-  padding: 1.5rem;
-}
-
 .section-card-title {
   font-family: 'Uncial Antiqua', serif;
   color: #1e1005;
@@ -346,10 +338,9 @@ html, body, #root {
   background: linear-gradient(160deg, #fdf6e3, #f5e6c0);
   border: 2px solid #8b5e2a;
   border-radius: 2px 12px 2px 12px;
-  box-shadow: 
-    4px 4px 20px rgba(0,0,0,0.4),
-    8px 8px 40px rgba(0,0,0,0.2),
-    inset 0 1px 0 rgba(255,255,255,0.5);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35),
+              0 1px 4px rgba(0,0,0,0.2),
+              inset 0 1px 0 rgba(255,255,255,0.5);
   padding: 1.5rem;
   position: relative;
   overflow: hidden;

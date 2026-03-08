@@ -48,15 +48,16 @@ export function AppShell() {
   }
 
   return (
-    <div
-      className="text-ink"
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "transparent",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <>
+      <div
+        className="text-ink"
+        style={{
+          minHeight: "100vh",
+          backgroundColor: "transparent",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
       <header className="bg-[#2c1a08] shadow-[inset_0_-4px_12px_rgba(0,0,0,0.5)] border-b-2 border-[#c9962a] backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -201,7 +202,32 @@ export function AppShell() {
         >
           <Outlet />
         </main>
-      </div>
-    </div>
+      </div> {/* fin app-container */}
+
+      <footer
+        style={{
+          textAlign: "center",
+          padding: "1rem 0 0.75rem",
+          marginTop: "auto",
+          width: '100%',
+        }}
+      >
+        <p
+          style={{
+              fontFamily: "'Cinzel', serif",
+              fontSize: "0.75rem",
+              letterSpacing: "0.15em",
+              color: "#ffffff",
+              textTransform: "uppercase",
+              textShadow: "0 2px 4px rgba(0,0,0,0.8)",
+              fontWeight: "600",
+          }}
+        >
+          Cette application a été créée et pensée par Quentin.P &amp; Amélie.J
+        </p>
+      </footer>
+
+      </div> {/* fin conteneur principal */}
+    </>
   );
 }

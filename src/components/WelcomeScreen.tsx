@@ -287,6 +287,25 @@ export function WelcomeScreen({ onEnter }: Props) {
           </div>
         </div>
       </div>
+      <div style={{
+  position: 'absolute',
+  bottom: '0.75rem',
+  left: '50%',
+  transform: 'translateX(-50%)',
+  textAlign: 'center',
+  pointerEvents: 'none',
+  zIndex: 10,
+}}>
+  <p style={{
+    fontFamily: "'Cinzel', serif",
+    fontSize: '0.65rem',
+    letterSpacing: '0.15em',
+    color: 'rgba(255, 255, 255, 0.7)',
+    textTransform: 'uppercase',
+  }}>
+    Cette application a été créée et pensée par Quentin.P &amp; Amélie.J
+  </p>
+</div>
     </div>
   );
 }
