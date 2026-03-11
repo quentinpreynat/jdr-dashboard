@@ -1,7 +1,7 @@
 ﻿import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCampaign } from "../hooks/useCampaign";
-import grimoireImg from "../assets/grimoire.png";
+import grimoireImg from "../assets/grimoire_candles.gif";
 
 type Props = { onEnter: () => void };
 
