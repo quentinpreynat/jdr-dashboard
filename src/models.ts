@@ -27,8 +27,7 @@ export interface LiveNote {
   createdFromSceneId?: string;
 }
 
-
-export type SceneChoiceTargetType = "place" | "npc";
+export type SceneChoiceTargetType = "place" | "npc" | "scene";
 
 export type ChoiceIntent =
   | "explore"
@@ -57,6 +56,7 @@ export interface Scene {
   placeId?: string;
   liveNotes?: LiveNote[];
   choices?: SceneChoice[];
+  picto?: string;
 }
 
 export interface Session {

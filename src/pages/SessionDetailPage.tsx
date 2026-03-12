@@ -143,6 +143,7 @@ export function SessionDetailPage() {
               scene={scene}
               places={places}
               npcs={data.npcs}
+              allScenes={session.scenes}
               highlight={highlightSceneId === scene.id}
               onDelete={() => deleteScene(sessionId, scene.id)}
               onUpdate={(fields) => updateScene(sessionId, scene.id, fields)}

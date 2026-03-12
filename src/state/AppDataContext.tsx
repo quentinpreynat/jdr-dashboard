@@ -70,7 +70,7 @@ interface AppDataContextValue {
   addSceneChoice(
     sessionId: string,
     sceneId: string,
-    choice: { label: string; targetType: "place" | "npc"; targetId: string },
+    choice: { label: string; targetType: "place" | "npc" | "scene"; targetId: string },
   ): void;
   removeSceneChoice(sessionId: string, sceneId: string, choiceId: string): void;
   deleteScene(sessionId: string, sceneId: string): void;
@@ -262,7 +262,7 @@ function isSceneChoice(
 ): value is {
   id: string;
   label: string;
-  targetType: "place" | "npc";
+  targetType: "place" | "npc" | "scene";
   targetId: string;
   intent?: unknown;
 } {
@@ -270,7 +270,7 @@ function isSceneChoice(
     return false;
   }
   const targetType = value.targetType;
-  const validTargetType = targetType === "place" || targetType === "npc";
+  const validTargetType = targetType === "place" || targetType === "npc" || targetType === "scene";
   const targetId = value.targetId;
   const intent = value.intent;
   const validIntent =

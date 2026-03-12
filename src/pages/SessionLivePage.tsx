@@ -4,6 +4,7 @@ import { ChoiceIcon } from "../components/ChoiceIcon";
 import { ImprovisationModal } from "../components/ImprovisationModal";
 import { ItemDetail } from "../components/ItemDetail";
 import { ItemEditor } from "../components/ItemEditor";
+import { SceneMap } from "../components/SceneMap";
 import { addItem, deleteItem, getItems, updateItem } from "../lib/itemsStorage";
 import { useAppData } from "../state/AppDataContext";
 import { useSettings } from "../state/SettingsContext";
@@ -82,6 +83,7 @@ export function SessionLivePage() {
     data,
     addSceneLiveNote,
     removeSceneLiveNote,
+    updateScene, 
     createPlayerCharacter,
     updatePlayerCharacter,
     deletePlayerCharacter,
@@ -105,6 +107,7 @@ export function SessionLivePage() {
   );
   const [noteText, setNoteText] = useState("");
   const [noteScope, setNoteScope] = useState<"scene" | "campaign">("scene");
+  const [showSceneMap, setShowSceneMap] = useState(false);
   const [clockLabel, setClockLabel] = useState(() =>
     new Date().toLocaleTimeString("fr-FR", {
       hour: "2-digit",
@@ -492,6 +495,7 @@ export function SessionLivePage() {
             padding: "1rem 1.5rem",
             boxShadow: "4px 4px 20px rgba(0,0,0,0.3)",
             marginRight: `${rightPanelWidth + 5}px`,
+            transition: "margin 240ms ease",
           }}
         >
           <div>
@@ -535,7 +539,11 @@ export function SessionLivePage() {
         </header>
         <div
           className="flex flex-wrap gap-8 px-6 py-4"
-          style={{ marginRight: `${rightPanelWidth + 5}px` }}
+          style={{
+            marginRight: `${rightPanelWidth + 5}px`,
+            marginLeft: showSceneMap ? "310px" : "0px",
+            transition: "margin 240ms ease",
+          }}
         >
           {[...globalNotes].reverse().map((note, index) => {
             const rotations = [-3, 1.5, -1, 2.5, -2, 1, -1.5, 3];
@@ -715,6 +723,8 @@ export function SessionLivePage() {
           className="live-layout mx-auto w-full max-w-[1200px] min-w-0 px-6"
           style={{
             paddingRight: `${rightPanelWidth + 10}px`,
+            marginLeft: showSceneMap ? "310px" : "0px",
+            transition: "margin 240ms ease",
           }}
         >
           <div
@@ -1174,6 +1184,33 @@ export function SessionLivePage() {
           }}
         >
           <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => setShowSceneMap((prev) => !prev)}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "2px",
+                padding: "8px 4px",
+                cursor: "pointer",
+                border: "none",
+                borderRadius: "6px",
+                borderBottom: "1px solid rgba(139,94,42,0.3)",
+                backgroundColor: showSceneMap ? "#c9962a" : "#2c1a08",
+                color: showSceneMap ? "#fff" : "#c9962a",
+                overflow: "hidden",
+                width: "100%",
+              }}
+            >
+              <span className="flex flex-col items-center gap-1">
+                <span className="text-base">🗺️</span>
+                <span className="text-[10px] font-semibold tracking-wide">
+                  Carte
+                </span>
+              </span>
+            </button>
             <div className="menu-section">
               <button
                 type="button"
@@ -2355,6 +2392,21 @@ export function SessionLivePage() {
             </div>
           </aside>
         </>
+        {showSceneMap && (
+          <SceneMap
+            scenes={scenes}
+            selectedSceneId={selectedSceneId}
+            sessionId={sessionId ?? ""}
+            onSelectScene={(sceneId) => {
+              setSelectedSceneId(sceneId);
+              setShowSceneMap(false);
+            }}
+            onClose={() => setShowSceneMap(false)}
+            onUpdateScenePicto={(sceneId, picto) => {
+              updateScene(sessionId ?? "", sceneId, { picto });
+}}
+          />
+        )}
     </section>
   );
 }

@@ -12,6 +12,7 @@ interface SceneEditorProps {
   scene: Scene;
   places: Place[];
   npcs: Npc[];
+  allScenes: Scene[]; // toutes les scènes de la session pour les liaisons
   highlight?: boolean;
   onDelete(): void;
   onUpdate(fields: Partial<Omit<Scene, "id">>): void;
@@ -34,6 +35,7 @@ export function SceneEditor({
   scene,
   places,
   npcs,
+  allScenes,
   highlight = false,
   onDelete,
   onUpdate,
@@ -43,10 +45,11 @@ export function SceneEditor({
 }: SceneEditorProps) {
   const [openChoiceId, setOpenChoiceId] = useState<string | null>(null);
 
-  const defaultDraftType: SceneChoiceTargetType =
-    places.length > 0 ? "place" : "npc";
-  const defaultTargetId =
-    defaultDraftType === "place" ? (places[0]?.id ?? "") : (npcs[0]?.id ?? "");
+  // Scènes disponibles = toutes sauf la scène courante
+  const otherScenes = allScenes.filter((s) => s.id !== scene.id);
+
+  const defaultDraftType: SceneChoiceTargetType = "scene";
+  const defaultTargetId = otherScenes[0]?.id ?? (places[0]?.id ?? "");
 
   const [choiceDraft, setChoiceDraft] = useState<ChoiceDraft>({
     label: "",
@@ -63,19 +66,27 @@ export function SceneEditor({
     ? scene.text.trim()
     : "Aucun texte de narration pour le moment.";
 
+  // Retourne les cibles selon le type
+  function getTargets(type: SceneChoiceTargetType) {
+    if (type === "scene") return otherScenes.map((s) => ({ id: s.id, name: s.title || "Scène sans titre" }));
+    if (type === "place") return places.map((p) => ({ id: p.id, name: p.name || "Lieu sans nom" }));
+    return npcs.map((n) => ({ id: n.id, name: n.name || "PNJ sans nom" }));
+  }
+
   useEffect(() => {
-    const targets = choiceDraft.targetType === "place" ? places : npcs;
+    const targets = getTargets(choiceDraft.targetType);
     if (targets.length === 0) {
       if (choiceDraft.targetId !== "") {
         setChoiceDraft((prev) => ({ ...prev, targetId: "" }));
       }
       return;
     }
-    const exists = targets.some((target) => target.id === choiceDraft.targetId);
+    const exists = targets.some((t) => t.id === choiceDraft.targetId);
     if (!exists) {
       setChoiceDraft((prev) => ({ ...prev, targetId: targets[0].id }));
     }
-  }, [choiceDraft.targetId, choiceDraft.targetType, npcs, places]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [choiceDraft.targetId, choiceDraft.targetType, npcs, places, allScenes]);
 
   useEffect(() => {
     if (openChoiceId && !choices.some((choice) => choice.id === openChoiceId)) {
@@ -156,9 +167,7 @@ export function SceneEditor({
           </label>
         </SceneEditorAccordion>
 
-        <SceneEditorAccordion
-          title={`Personnages lies (${scene.linkedNpcIds.length})`}
-        >
+        <SceneEditorAccordion title={`Personnages lies (${scene.linkedNpcIds.length})`}>
           <div className="space-y-2">
             {npcs.map((npc) => {
               const isLinked = scene.linkedNpcIds.includes(npc.id);
@@ -192,7 +201,7 @@ export function SceneEditor({
           <div className="space-y-2">
             {choices.map((choice, choiceIndex) => {
               const isOpen = openChoiceId === choice.id;
-              const choiceTargets = choice.targetType === "place" ? places : npcs;
+              const choiceTargets = getTargets(choice.targetType);
               return (
                 <article
                   key={choice.id}
@@ -206,22 +215,22 @@ export function SceneEditor({
                     className="flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-stone-800 hover:bg-stone-300/40"
                     aria-expanded={isOpen}
                   >
-                    <span
-                      className={`text-xs transition-transform duration-200 ${
-                        isOpen ? "rotate-90" : ""
-                      }`}
-                    >
+                    <span className={`text-xs transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}>
                       &gt;
                     </span>
                     <span>{choice.label?.trim() || "Choix sans texte"}</span>
+                    {/* Badge type */}
+                    <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
+                      choice.targetType === "scene"
+                        ? "bg-amber-200 text-amber-900"
+                        : choice.targetType === "place"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-green-100 text-green-800"
+                    }`}>
+                      {choice.targetType === "scene" ? "🗺️ Scène" : choice.targetType === "place" ? "📍 Lieu" : "🎭 PNJ"}
+                    </span>
                   </button>
-                  <div
-                    className={`grid transition-all duration-200 ${
-                      isOpen
-                        ? "grid-rows-[1fr] opacity-100"
-                        : "grid-rows-[0fr] opacity-70"
-                    }`}
-                  >
+                  <div className={`grid transition-all duration-200 ${isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-70"}`}>
                     <div className="overflow-hidden">
                       <div className="space-y-2 border-t border-stone-300 px-3 py-3 text-sm">
                         <input
@@ -238,42 +247,35 @@ export function SceneEditor({
                           className="min-h-11 w-full rounded-md border border-stone-300 bg-stone-100 px-2 py-1 text-stone-800"
                         />
                         <div className="grid gap-2 lg:grid-cols-[160px_1fr_auto]">
+                          {/* Sélecteur type */}
                           <select
                             value={choice.targetType}
                             onChange={(event) => {
-                              const nextType =
-                                event.target.value as SceneChoiceTargetType;
-                              const nextTargetId =
-                                nextType === "place"
-                                  ? (places[0]?.id ?? "")
-                                  : (npcs[0]?.id ?? "");
+                              const nextType = event.target.value as SceneChoiceTargetType;
+                              const targets = getTargets(nextType);
+                              const nextTargetId = targets[0]?.id ?? "";
                               onUpdate({
                                 choices: choices.map((entry) =>
                                   entry.id === choice.id
-                                    ? {
-                                        ...entry,
-                                        targetType: nextType,
-                                        targetId: nextTargetId,
-                                      }
+                                    ? { ...entry, targetType: nextType, targetId: nextTargetId }
                                     : entry,
                                 ),
                               });
                             }}
                             className="min-h-11 rounded-md border border-stone-300 bg-stone-100 px-2 py-1 text-stone-800"
                           >
-                            <option value="place">Lieu</option>
-                            <option value="npc">PNJ</option>
+                            <option value="scene">🗺️ Scène</option>
+                            <option value="place">📍 Lieu</option>
+                            <option value="npc">🎭 PNJ</option>
                           </select>
+                          {/* Sélecteur cible */}
                           <select
                             value={choice.targetId}
                             onChange={(event) =>
                               onUpdate({
                                 choices: choices.map((entry) =>
                                   entry.id === choice.id
-                                    ? {
-                                        ...entry,
-                                        targetId: event.target.value,
-                                      }
+                                    ? { ...entry, targetId: event.target.value }
                                     : entry,
                                 ),
                               })
@@ -283,7 +285,7 @@ export function SceneEditor({
                             {choiceTargets.length > 0 ? (
                               choiceTargets.map((target) => (
                                 <option key={target.id} value={target.id}>
-                                  {target.name || "Sans nom"}
+                                  {target.name}
                                 </option>
                               ))
                             ) : (
@@ -294,14 +296,9 @@ export function SceneEditor({
                             <button
                               type="button"
                               onClick={() => {
-                                if (choiceIndex === 0) {
-                                  return;
-                                }
+                                if (choiceIndex === 0) return;
                                 const nextChoices = [...choices];
-                                [nextChoices[choiceIndex - 1], nextChoices[choiceIndex]] = [
-                                  nextChoices[choiceIndex],
-                                  nextChoices[choiceIndex - 1],
-                                ];
+                                [nextChoices[choiceIndex - 1], nextChoices[choiceIndex]] = [nextChoices[choiceIndex], nextChoices[choiceIndex - 1]];
                                 onUpdate({ choices: nextChoices });
                               }}
                               className="btn btn-subtle px-2 text-xs"
@@ -312,14 +309,9 @@ export function SceneEditor({
                             <button
                               type="button"
                               onClick={() => {
-                                if (choiceIndex === choices.length - 1) {
-                                  return;
-                                }
+                                if (choiceIndex === choices.length - 1) return;
                                 const nextChoices = [...choices];
-                                [nextChoices[choiceIndex + 1], nextChoices[choiceIndex]] = [
-                                  nextChoices[choiceIndex],
-                                  nextChoices[choiceIndex + 1],
-                                ];
+                                [nextChoices[choiceIndex + 1], nextChoices[choiceIndex]] = [nextChoices[choiceIndex], nextChoices[choiceIndex + 1]];
                                 onUpdate({ choices: nextChoices });
                               }}
                               className="btn btn-subtle px-2 text-xs"
@@ -331,9 +323,7 @@ export function SceneEditor({
                               type="button"
                               onClick={() => {
                                 const confirmed = window.confirm("Supprimer ce choix ?");
-                                if (!confirmed) {
-                                  return;
-                                }
+                                if (!confirmed) return;
                                 onRemoveChoice(choice.id);
                               }}
                               className="btn btn-subtle px-2 text-xs"
@@ -352,12 +342,7 @@ export function SceneEditor({
                               onUpdate({
                                 choices: choices.map((entry) =>
                                   entry.id === choice.id
-                                    ? {
-                                        ...entry,
-                                        intent: event.target.value
-                                          ? (event.target.value as ChoiceIntent)
-                                          : undefined,
-                                      }
+                                    ? { ...entry, intent: event.target.value ? (event.target.value as ChoiceIntent) : undefined }
                                     : entry,
                                 ),
                               })
@@ -384,6 +369,7 @@ export function SceneEditor({
             )}
           </div>
 
+          {/* Formulaire ajout choix */}
           <div className="mt-3 space-y-2 rounded-md border border-stone-300 bg-stone-100/80 p-3">
             <input
               value={choiceDraft.label}
@@ -398,18 +384,15 @@ export function SceneEditor({
                 value={choiceDraft.targetType}
                 onChange={(event) => {
                   const nextType = event.target.value as SceneChoiceTargetType;
-                  const nextTargetId =
-                    nextType === "place" ? (places[0]?.id ?? "") : (npcs[0]?.id ?? "");
-                  setChoiceDraft((prev) => ({
-                    ...prev,
-                    targetType: nextType,
-                    targetId: nextTargetId,
-                  }));
+                  const targets = getTargets(nextType);
+                  const nextTargetId = targets[0]?.id ?? "";
+                  setChoiceDraft((prev) => ({ ...prev, targetType: nextType, targetId: nextTargetId }));
                 }}
                 className="parchment-text min-h-11 rounded-md border border-stone-300 bg-stone-100 px-3 py-2 text-sm text-stone-800"
               >
-                <option value="place">Lieu</option>
-                <option value="npc">PNJ</option>
+                <option value="scene">🗺️ Scène</option>
+                <option value="place">📍 Lieu</option>
+                <option value="npc">🎭 PNJ</option>
               </select>
               <select
                 value={choiceDraft.targetId}
@@ -418,10 +401,10 @@ export function SceneEditor({
                 }
                 className="parchment-text min-h-11 rounded-md border border-stone-300 bg-stone-100 px-3 py-2 text-sm text-stone-800"
               >
-                {(choiceDraft.targetType === "place" ? places : npcs).length > 0 ? (
-                  (choiceDraft.targetType === "place" ? places : npcs).map((target) => (
+                {getTargets(choiceDraft.targetType).length > 0 ? (
+                  getTargets(choiceDraft.targetType).map((target) => (
                     <option key={target.id} value={target.id}>
-                      {target.name || "Sans nom"}
+                      {target.name}
                     </option>
                   ))
                 ) : (
@@ -431,9 +414,7 @@ export function SceneEditor({
               <button
                 type="button"
                 onClick={() => {
-                  if (!choiceDraft.label.trim() || !choiceDraft.targetId) {
-                    return;
-                  }
+                  if (!choiceDraft.label.trim() || !choiceDraft.targetId) return;
                   onAddChoice({
                     label: choiceDraft.label,
                     targetType: choiceDraft.targetType,
