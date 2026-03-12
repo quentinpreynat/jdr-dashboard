@@ -155,7 +155,7 @@ export function SceneMap({ scenes, selectedSceneId, sessionId, onSelectScene, on
       setTimeout(() => { hadDraggedRef.current = false; }, 80);
     };
     const onMouseMove = (e: MouseEvent) => onMove(e.clientX, e.clientY);
-    const onTouchMove = (e: TouchEvent) => { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); };
+    const onTouchMove = (e: TouchEvent) => { if (draggingRef.current) e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); };
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onEnd);
     window.addEventListener("touchmove", onTouchMove, { passive: false });
