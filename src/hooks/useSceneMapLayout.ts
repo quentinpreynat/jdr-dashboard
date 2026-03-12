@@ -49,9 +49,11 @@ export function useSceneMapLayout(
     const edgeSet = new Set<string>();
 
     // Construire les connexions scène→scène
+    // On ignore targetType et on se base uniquement sur targetId
+    // pour être tolérant quelle que soit la valeur stockée ("scene", "Scene", etc.)
     for (const scene of scenes) {
       for (const choice of scene.choices ?? []) {
-        if (choice.targetType !== "scene") continue;
+        if (!choice.targetId) continue;
         if (!sceneIds.has(choice.targetId)) continue;
         if (choice.targetId === scene.id) continue;
         const key = [scene.id, choice.targetId].sort().join("|");
@@ -71,7 +73,7 @@ export function useSceneMapLayout(
     for (const scene of scenes) childrenOf[scene.id] = [];
     for (const scene of scenes) {
       for (const choice of scene.choices ?? []) {
-        if (choice.targetType !== "scene") continue;
+        if (!choice.targetId) continue;
         if (!sceneIds.has(choice.targetId)) continue;
         if (choice.targetId === scene.id) continue;
         if (!childrenOf[scene.id].includes(choice.targetId))

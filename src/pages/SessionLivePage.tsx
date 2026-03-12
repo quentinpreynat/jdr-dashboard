@@ -107,6 +107,8 @@ export function SessionLivePage() {
   );
   const [noteText, setNoteText] = useState("");
   const [noteScope, setNoteScope] = useState<"scene" | "campaign">("scene");
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState<string>("");
   const [clockLabel, setClockLabel] = useState(() =>
     new Date().toLocaleTimeString("fr-FR", {
       hour: "2-digit",
@@ -476,7 +478,8 @@ export function SessionLivePage() {
   return (
     <section
       ref={containerRef}
-      className={`session-live h-screen w-full overflow-x-hidden bg-transparent ${isDimMode ? "is-dim" : ""}`}
+      className={`session-live h-screen w-full overflow-x-hidden overflow-y-auto bg-transparent ${isDimMode ? "is-dim" : ""}`}
+      style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
     >
       {showImprovisation && (
         <ImprovisationModal onClose={() => setShowImprovisation(false)} />
@@ -543,6 +546,7 @@ export function SessionLivePage() {
           {[...globalNotes].reverse().map((note, index) => {
             const rotations = [-3, 1.5, -1, 2.5, -2, 1, -1.5, 3];
             const rotation = rotations[index % rotations.length];
+            const isEditing = editingNoteId === note.id;
 
             const parchmentStyles = [
               "radial-gradient(ellipse at 35% 25%, #f2e0a0 0%, #d4a84b 50%, #b07830 100%)",
@@ -557,157 +561,134 @@ export function SessionLivePage() {
                 key={note.id}
                 className="group relative flex-shrink-0"
                 style={{
-                  width: "160px",
-                  minHeight: "110px",
-                  marginTop: "14px",
-                  transform: `rotate(${rotation}deg)`,
-                  filter: `drop-shadow(0 8px 16px rgba(0,0,0,0.65)) 
-                 drop-shadow(0 2px 4px rgba(0,0,0,0.4))`,
+                  width: "118px",
+                  minHeight: "80px",
+                  marginTop: "12px",
+                  transform: isEditing ? "rotate(0deg) scale(1.08)" : `rotate(${rotation}deg)`,
+                  filter: isEditing
+                    ? "drop-shadow(0 12px 24px rgba(0,0,0,0.75)) drop-shadow(0 4px 8px rgba(0,0,0,0.5))"
+                    : "drop-shadow(0 6px 12px rgba(0,0,0,0.6)) drop-shadow(0 2px 4px rgba(0,0,0,0.35))",
                   transition: "transform 0.2s ease, filter 0.2s ease",
+                  zIndex: isEditing ? 50 : undefined,
                 }}
                 onMouseEnter={(event) => {
-                  (event.currentTarget as HTMLDivElement).style.transform =
-                    "rotate(0deg) scale(1.04)";
+                  if (isEditing) return;
+                  (event.currentTarget as HTMLDivElement).style.transform = "rotate(0deg) scale(1.04)";
                   (event.currentTarget as HTMLDivElement).style.filter =
-                    "drop-shadow(0 12px 24px rgba(0,0,0,0.7)) drop-shadow(0 4px 8px rgba(0,0,0,0.5))";
+                    "drop-shadow(0 10px 20px rgba(0,0,0,0.7)) drop-shadow(0 4px 8px rgba(0,0,0,0.5))";
                 }}
                 onMouseLeave={(event) => {
+                  if (isEditing) return;
                   (event.currentTarget as HTMLDivElement).style.transform = `rotate(${rotation}deg)`;
                   (event.currentTarget as HTMLDivElement).style.filter =
-                    "drop-shadow(0 8px 16px rgba(0,0,0,0.65)) drop-shadow(0 2px 4px rgba(0,0,0,0.4))";
+                    "drop-shadow(0 6px 12px rgba(0,0,0,0.6)) drop-shadow(0 2px 4px rgba(0,0,0,0.35))";
                 }}
               >
-                {/* Clou centré en haut */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "-10px",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: "22px",
-                    height: "22px",
-                    borderRadius: "50%",
-                    background: `
-          radial-gradient(circle at 30% 30%, 
-            #c0c0c0 0%, #707070 30%, 
-            #2a2a2a 60%, #0a0a0a 100%)
-        `,
-                    boxShadow: `
-          0 4px 10px rgba(0,0,0,0.9),
-          0 1px 3px rgba(0,0,0,0.7),
-          inset 0 1px 2px rgba(255,255,255,0.35),
-          inset 0 -1px 3px rgba(0,0,0,0.6)
-        `,
-                    zIndex: 10,
-                  }}
-                />
-
-                {/* Tête de clou — reflet */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "-8px",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "50%",
-                    background:
-                      "radial-gradient(circle at 35% 35%, rgba(255,255,255,0.6), transparent)",
-                    zIndex: 11,
-                    pointerEvents: "none",
-                  }}
-                />
+                {/* Clou */}
+                <div style={{
+                  position: "absolute", top: "-8px", left: "50%",
+                  transform: "translateX(-50%)", width: "16px", height: "16px",
+                  borderRadius: "50%", zIndex: 10,
+                  background: "radial-gradient(circle at 30% 30%, #c0c0c0 0%, #707070 30%, #2a2a2a 60%, #0a0a0a 100%)",
+                  boxShadow: "0 3px 8px rgba(0,0,0,0.9), inset 0 1px 2px rgba(255,255,255,0.35)",
+                }}/>
+                <div style={{
+                  position: "absolute", top: "-6px", left: "50%",
+                  transform: "translateX(-50%)", width: "6px", height: "6px",
+                  borderRadius: "50%", zIndex: 11, pointerEvents: "none",
+                  background: "radial-gradient(circle at 35% 35%, rgba(255,255,255,0.6), transparent)",
+                }}/>
 
                 {/* Parchemin */}
                 <div
                   style={{
                     background: bg,
                     borderRadius: "1px 5px 3px 2px",
-                    padding: "22px 14px 16px",
+                    padding: "16px 10px 12px",
                     position: "relative",
-                    minHeight: "105px",
-                    boxShadow: `
-          inset 0 2px 0 rgba(255,255,255,0.25),
-          inset 0 -2px 6px rgba(0,0,0,0.2),
-          inset 2px 0 4px rgba(0,0,0,0.1),
-          inset -2px 0 4px rgba(0,0,0,0.1)
-        `,
-                    clipPath: `polygon(
-          0% 4%, 1.5% 0%, 3.5% 2.5%, 6% 0.5%,
-          94% 0%, 96.5% 2%, 98.5% 0%, 100% 3%,
-          99% 94%, 100% 98%, 97.5% 100%, 95% 97.5%,
-          4% 100%, 1.5% 98.5%, 0% 100%
-        )`,
+                    minHeight: "76px",
+                    cursor: isEditing ? "default" : "pointer",
+                    boxShadow: `inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -2px 6px rgba(0,0,0,0.2)`,
+                    clipPath: `polygon(0% 4%, 1.5% 0%, 3.5% 2.5%, 6% 0.5%, 94% 0%, 96.5% 2%, 98.5% 0%, 100% 3%, 99% 94%, 100% 98%, 97.5% 100%, 95% 97.5%, 4% 100%, 1.5% 98.5%, 0% 100%)`,
+                  }}
+                  onClick={() => {
+                    if (!isEditing) {
+                      setEditingNoteId(note.id);
+                      setEditingNoteText(note.text);
+                    }
                   }}
                 >
                   {/* Texture lignes */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      background: `
-            repeating-linear-gradient(
-              0deg, transparent, transparent 11px,
-              rgba(101,67,33,0.07) 11px,
-              rgba(101,67,33,0.07) 12px
-            )
-          `,
-                      pointerEvents: "none",
-                    }}
-                  />
+                  <div style={{
+                    position: "absolute", inset: 0, pointerEvents: "none",
+                    background: "repeating-linear-gradient(0deg, transparent, transparent 9px, rgba(101,67,33,0.07) 9px, rgba(101,67,33,0.07) 10px)",
+                  }}/>
+                  {/* Bords brunis */}
+                  <div style={{
+                    position: "absolute", inset: 0, pointerEvents: "none",
+                    background: `radial-gradient(ellipse at top left, rgba(70,35,10,0.5) 0%, transparent 42%), radial-gradient(ellipse at top right, rgba(70,35,10,0.45) 0%, transparent 42%), radial-gradient(ellipse at bottom left, rgba(70,35,10,0.45) 0%, transparent 42%), radial-gradient(ellipse at bottom right, rgba(70,35,10,0.5) 0%, transparent 42%)`,
+                  }}/>
 
-                  {/* Bords brunis prononcés */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      background: `
-            radial-gradient(ellipse at top left, 
-              rgba(70,35,10,0.55) 0%, transparent 42%),
-            radial-gradient(ellipse at top right, 
-              rgba(70,35,10,0.5) 0%, transparent 42%),
-            radial-gradient(ellipse at bottom left, 
-              rgba(70,35,10,0.5) 0%, transparent 42%),
-            radial-gradient(ellipse at bottom right, 
-              rgba(70,35,10,0.55) 0%, transparent 42%),
-            radial-gradient(ellipse at center, 
-              rgba(255,230,150,0.25) 0%, transparent 65%)
-          `,
-                      pointerEvents: "none",
-                    }}
-                  />
-
-                  {/* Texte */}
-                  <p
-                    style={{
+                  {/* Mode lecture */}
+                  {!isEditing && (
+                    <p style={{
                       fontFamily: "'Crimson Text', serif",
-                      fontSize: "0.75rem",
-                      lineHeight: "1.45",
-                      color: "#1e0f00",
-                      position: "relative",
-                      zIndex: 1,
+                      fontSize: "0.65rem", lineHeight: "1.4",
+                      color: "#1e0f00", position: "relative", zIndex: 1,
                       wordBreak: "break-word",
                       textShadow: "0 1px 0 rgba(255,220,150,0.4)",
-                    }}
-                  >
-                    {note.text}
-                  </p>
+                      margin: 0,
+                    }}>
+                      {note.text}
+                    </p>
+                  )}
+
+                  {/* Mode édition */}
+                  {isEditing && (
+                    <textarea
+                      autoFocus
+                      value={editingNoteText}
+                      onChange={(e) => setEditingNoteText(e.target.value)}
+                      onBlur={() => {
+                        const trimmed = editingNoteText.trim();
+                        if (trimmed && trimmed !== note.text) {
+                          removeGlobalNote(note.id);
+                          addGlobalNote(trimmed);
+                        }
+                        setEditingNoteId(null);
+                        setEditingNoteText("");
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                          setEditingNoteId(null);
+                          setEditingNoteText("");
+                        }
+                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                          e.currentTarget.blur();
+                        }
+                      }}
+                      style={{
+                        width: "100%", minHeight: "60px",
+                        background: "transparent",
+                        border: "none", outline: "none", resize: "none",
+                        fontFamily: "'Crimson Text', serif",
+                        fontSize: "0.65rem", lineHeight: "1.4",
+                        color: "#1e0f00", position: "relative", zIndex: 1,
+                        wordBreak: "break-word",
+                        textShadow: "0 1px 0 rgba(255,220,150,0.4)",
+                        padding: 0,
+                      }}
+                    />
+                  )}
 
                   {/* Bouton supprimer */}
                   <button
                     type="button"
-                    onClick={() => removeGlobalNote(note.id)}
-                    className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-xs rounded-full w-5 h-5 flex items-center justify-center"
-                    style={{
-                      background: "rgba(122,26,26,0.8)",
-                      color: "#fff",
-                      zIndex: 2,
-                    }}
+                    onClick={(e) => { e.stopPropagation(); removeGlobalNote(note.id); }}
+                    className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center"
+                    style={{ width: "14px", height: "14px", fontSize: "8px", background: "rgba(122,26,26,0.8)", color: "#fff", zIndex: 3 }}
                     aria-label="Supprimer"
-                  >
-                    ✕
-                  </button>
+                  >✕</button>
                 </div>
               </div>
             );
@@ -939,8 +920,8 @@ export function SessionLivePage() {
                   <section
                     className="section-card p-4 relative"
                     style={{
-                      boxShadow: "0 4px 16px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.2)",
-                      background: "#1a1208",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.06)",
+                      background: "linear-gradient(160deg, #fdf6e3, #f5e6c0)",
                     }}
                   >
                     <p className="field-label mb-2" style={{ color: "#c9962a", fontFamily: "'Uncial Antiqua', serif" }}>🗺️ Carte des scènes</p>

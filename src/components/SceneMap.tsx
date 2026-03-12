@@ -208,9 +208,9 @@ export function SceneMap({ scenes, selectedSceneId, sessionId, onSelectScene, on
   return (
     <div style={{ position: "relative" }}>
       {/* Barre contrôle */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px", padding: "4px 6px", background: "rgba(139,94,42,0.15)", borderRadius: "6px", border: "1px solid rgba(139,94,42,0.3)" }}>
-        <span style={{ fontSize: "0.6rem", color: "#8b6914", fontStyle: "italic", fontFamily: "'Cinzel', serif" }}>
-          Glisser · Tap icône pour changer
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px", padding: "4px 6px", background: "rgba(255,220,100,0.08)", borderRadius: "4px", border: "1px solid rgba(201,150,42,0.3)" }}>
+        <span style={{ fontSize: "0.6rem", color: "#c9a050", fontStyle: "italic", fontFamily: "'Cinzel', serif" }}>
+          ✦ Glisser · Tap icône pour changer
         </span>
         <button type="button" onClick={handleReset}
           style={{ fontSize: "0.6rem", padding: "2px 6px", background: "rgba(139,94,42,0.2)", border: "1px solid rgba(139,94,42,0.4)", borderRadius: "4px", color: "#c9962a", cursor: "pointer", fontFamily: "'Cinzel', serif" }}>
@@ -223,38 +223,127 @@ export function SceneMap({ scenes, selectedSceneId, sessionId, onSelectScene, on
         {[{ color: "#c9962a", label: "Active" }, { color: "#7aaa50", label: "Visitée" }, { color: "#8a7050", label: "Non visitée" }].map((item) => (
           <div key={item.label} style={{ display: "flex", alignItems: "center", gap: "3px" }}>
             <div style={{ width: "10px", height: "10px", borderRadius: "2px", background: item.color, border: "1px solid rgba(201,150,42,0.4)" }} />
-            <span style={{ fontSize: "0.55rem", color: "#7a5c2a", fontFamily: "'Cinzel', serif" }}>{item.label}</span>
+            <span style={{ fontSize: "0.55rem", color: "#c9a050", fontFamily: "'Cinzel', serif" }}>{item.label}</span>
           </div>
         ))}
       </div>
 
-      {/* SVG grille */}
-      <div ref={containerRef} style={{ overflowX: "auto", overflowY: "auto", maxHeight: "280px", borderRadius: "8px", border: "1px solid rgba(139,94,42,0.4)" }}>
+      {/* SVG carte */}
+      <div ref={containerRef} style={{
+        overflowX: "auto", overflowY: "auto", maxHeight: "320px",
+        borderRadius: "6px",
+        border: "3px solid #6b4c1e",
+        boxShadow: "inset 0 0 30px rgba(80,40,0,0.25), 0 4px 16px rgba(0,0,0,0.4)",
+        background: "#c8a96e",
+      }}>
         <svg width={svgW} height={svgH} style={{ display: "block" }}>
           <defs>
-            {/* FIX : le pattern commence exactement à PADDING pour s'aligner avec les cases */}
-            <pattern id="dofusGrid" patternUnits="userSpaceOnUse" width={step} height={step} x={PADDING} y={PADDING}>
-              <rect width={step} height={step} fill="#e8d5a8" />
-              <rect x="2" y="2" width={step - 4} height={step - 4} fill="#ddc88a" rx="2" />
+            {/* Texture grain parchemin */}
+            <filter id="grain" x="0%" y="0%" width="100%" height="100%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" stitchTiles="stitch" result="noise"/>
+              <feColorMatrix type="saturate" values="0" in="noise" result="gray"/>
+              <feBlend in="SourceGraphic" in2="gray" mode="multiply" result="blend"/>
+              <feComposite in="blend" in2="SourceGraphic" operator="in"/>
+            </filter>
+            {/* Roughen pour ombres routes */}
+            <filter id="roughen" x="-5%" y="-5%" width="110%" height="110%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise"/>
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.5" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+            {/* Vignette coins */}
+            <radialGradient id="vignette" cx="50%" cy="50%" r="60%">
+              <stop offset="0%" stopColor="transparent"/>
+              <stop offset="80%" stopColor="transparent"/>
+              <stop offset="100%" stopColor="rgba(40,18,0,0.55)"/>
+            </radialGradient>
+            {/* Brume bords */}
+            <radialGradient id="mistL" cx="0%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="rgba(232,213,160,0.65)"/>
+              <stop offset="100%" stopColor="transparent"/>
+            </radialGradient>
+            <radialGradient id="mistR" cx="100%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="rgba(232,213,160,0.65)"/>
+              <stop offset="100%" stopColor="transparent"/>
+            </radialGradient>
+            <radialGradient id="mistT" cx="50%" cy="0%" r="40%">
+              <stop offset="0%" stopColor="rgba(232,213,160,0.6)"/>
+              <stop offset="100%" stopColor="transparent"/>
+            </radialGradient>
+            <radialGradient id="mistB" cx="50%" cy="100%" r="40%">
+              <stop offset="0%" stopColor="rgba(232,213,160,0.6)"/>
+              <stop offset="100%" stopColor="transparent"/>
+            </radialGradient>
+            {/* Grille légère style papier ancien */}
+            <pattern id="mapGrid" patternUnits="userSpaceOnUse" width={step} height={step} x={PADDING} y={PADDING}>
+              <rect width={step} height={step} fill="transparent"/>
+              <line x1={step} y1="0" x2={step} y2={step} stroke="rgba(100,65,20,0.18)" strokeWidth="0.5"/>
+              <line x1="0" y1={step} x2={step} y2={step} stroke="rgba(100,65,20,0.18)" strokeWidth="0.5"/>
             </pattern>
           </defs>
 
-          {/* Fond parchemin clair — harmonisé avec la page */}
-            <rect width={svgW} height={svgH} fill="#efe2c2" />
-            <rect width={svgW} height={svgH} fill="url(#dofusGrid)" opacity="0.85" />
+          {/* Fond parchemin principal */}
+          <rect width={svgW} height={svgH} fill="#e8d09a"/>
+          <rect width={svgW} height={svgH} fill="#dfc48a" opacity="0.35"/>
+          {/* Grille légère */}
+          <rect width={svgW} height={svgH} fill="url(#mapGrid)"/>
+          {/* Grain parchemin */}
+          <rect width={svgW} height={svgH} fill="#c8a96e" filter="url(#grain)" opacity="0.12"/>
 
-          {/* Connexions pointillées */}
+          {/* Micro-texture lignes horizontales papier ancien */}
+          {Array.from({ length: Math.ceil(svgH / 30) }).map((_, i) => (
+            <line key={`hline-${i}`} x1="0" y1={i * 30} x2={svgW} y2={i * 30}
+              stroke="rgba(90,50,0,0.06)" strokeWidth="0.4"/>
+          ))}
+
+          {/* Décors cartographiques — montagnes schématiques coins */}
+          <g opacity="0.13" fill="none" stroke="#5a3200" strokeWidth="1" style={{pointerEvents:"none"}}>
+            <path d={`M8 ${svgH - 40} L22 ${svgH - 62} L36 ${svgH - 40}`}/>
+            <path d={`M22 ${svgH - 40} L38 ${svgH - 68} L54 ${svgH - 40}`}/>
+            <path d={`M${svgW - 54} 14 L${svgW - 38} 0 L${svgW - 22} 14`}/>
+            <path d={`M${svgW - 40} 14 L${svgW - 24} -2 L${svgW - 8} 14`}/>
+            <path d={`M8 40 L20 22 L32 40`}/>
+          </g>
+
+          {/* Décors cartographiques — forêts schématiques bords */}
+          <g opacity="0.13" style={{pointerEvents:"none"}}>
+            <circle cx={14} cy={Math.round(svgH / 2 - 10)} r="7" fill="#3a5a20"/>
+            <circle cx={26} cy={Math.round(svgH / 2 - 16)} r="9" fill="#3a5a20"/>
+            <circle cx={38} cy={Math.round(svgH / 2 - 10)} r="7" fill="#3a5a20"/>
+            <circle cx={svgW - 14} cy={Math.round(svgH / 3)} r="7" fill="#3a5a20"/>
+            <circle cx={svgW - 26} cy={Math.round(svgH / 3 - 6)} r="9" fill="#3a5a20"/>
+            <circle cx={svgW - 38} cy={Math.round(svgH / 3)} r="6" fill="#3a5a20"/>
+          </g>
+
+          {/* Boussole en coin bas-droit */}
+          <g transform={`translate(${svgW - 42}, ${svgH - 42})`} opacity="0.62" style={{pointerEvents:"none"}}>
+            <circle cx="18" cy="18" r="17" fill="rgba(240,220,160,0.7)" stroke="rgba(100,65,20,0.5)" strokeWidth="1.5"/>
+            <polygon points="18,4 14,18 18,15 22,18" fill="#8b2020"/>
+            <polygon points="18,32 14,18 18,21 22,18" fill="#4a3010"/>
+            <polygon points="32,18 18,14 21,18 18,22" fill="#4a3010"/>
+            <polygon points="4,18 18,14 15,18 18,22" fill="#4a3010"/>
+            <circle cx="18" cy="18" r="3" fill="rgba(100,65,20,0.6)"/>
+            <text x="18" y="1.5" textAnchor="middle" fontSize="6" fill="#8b2020" fontFamily="'Cinzel',serif" fontWeight="bold">N</text>
+          </g>
+
+          {/* Routes style carte ancienne */}
           {edges.map((edge, i) => {
             const fromNode = nodes.find((n) => n.id === edge.from);
             const toNode = nodes.find((n) => n.id === edge.to);
             if (!fromNode || !toNode) return null;
             const from = cellCenter(fromNode.col, fromNode.row);
             const to = cellCenter(toNode.col, toNode.row);
+            const mx = (from.x + to.x) / 2 + (Math.sin(i * 2.5) * 12);
+            const my = (from.y + to.y) / 2 + (Math.cos(i * 2.5) * 12);
+            const path = `M ${from.x} ${from.y} Q ${mx} ${my} ${to.x} ${to.y}`;
             return (
-              <line key={`edge-${i}`}
-                x1={from.x} y1={from.y} x2={to.x} y2={to.y}
-                stroke="rgba(139,94,42,0.7)" strokeWidth="2" strokeDasharray="5 3"
-              />
+              <g key={`edge-${i}`}>
+                {/* Route ombre roughen */}
+                <path d={path} fill="none" stroke="rgba(60,30,0,0.2)" strokeWidth="7" strokeLinecap="round" filter="url(#roughen)"/>
+                {/* Route principale terre */}
+                <path d={path} fill="none" stroke="rgba(130,85,35,0.65)" strokeWidth="4" strokeLinecap="round"/>
+                {/* Route centre chemin */}
+                <path d={path} fill="none" stroke="rgba(210,170,90,0.55)" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="5 4"/>
+              </g>
             );
           })}
 
@@ -290,19 +379,23 @@ export function SceneMap({ scenes, selectedSceneId, sessionId, onSelectScene, on
                 {node.isActive && (
                   <rect x={px - 3} y={py - 3} width={CELL_SIZE + 6} height={CELL_SIZE + 6} rx="7" fill="rgba(201,150,42,0.25)" />
                 )}
-{selectedSceneId === node.id && (
-  <circle
-    cx={px + CELL_SIZE / 2}
-    cy={py + CELL_SIZE / 2}
-    r={CELL_SIZE / 2 + 6}
-    fill="none"
-    stroke="#ffcc55"
-    strokeWidth="3"
-    style={{
-      filter: "drop-shadow(0 0 6px rgba(255,204,85,0.8))",
-      animation: "sceneMarker 1.5s ease-in-out infinite"
-    }}
-  />
+{node.isActive && (
+  <g style={{ pointerEvents: "none" }}>
+    {/* Halo pulsant */}
+    <rect x={px - 5} y={py - 5} width={CELL_SIZE + 10} height={CELL_SIZE + 10}
+      rx="8" fill="none" stroke="#ffdd44" strokeWidth="3"
+      style={{ filter: "drop-shadow(0 0 8px rgba(255,221,68,0.9))", animation: "markerPulse 1.5s ease-in-out infinite" }}
+    />
+    {/* Mât drapeau */}
+    <line x1={px + CELL_SIZE / 2} y1={py - 18} x2={px + CELL_SIZE / 2} y2={py}
+      stroke="#fff" strokeWidth="2" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.8))" }}/>
+    {/* Fanion rouge */}
+    <polygon
+      points={`${px + CELL_SIZE/2},${py - 18} ${px + CELL_SIZE/2 + 11},${py - 13} ${px + CELL_SIZE/2},${py - 8}`}
+      fill="#dd2222" stroke="#aa0000" strokeWidth="0.5"
+      style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.5))" }}
+    />
+  </g>
 )}
                 {/* Case */}
                 <rect x={px} y={py} width={CELL_SIZE} height={CELL_SIZE} rx="4"
@@ -323,20 +416,20 @@ export function SceneMap({ scenes, selectedSceneId, sessionId, onSelectScene, on
                   userSelect: "none"
                   }}
                   onClick={(e) => {
-                    e.stopPropagation()
-                      pictoTapRef.current = true
-
-    const containerRect = containerRef.current?.getBoundingClientRect()
-
-                     setPictoMenuPos({
-                       x: (containerRect?.left ?? 0) + px + CELL_SIZE / 2 - 110,
-                      y: (containerRect?.bottom ?? 0) + 8
-                      })
-
-                     setPictoMenuSceneId((prev) =>
-                       prev === node.id ? null : node.id
-                        )
-                      }}
+                    e.stopPropagation();
+                    pictoTapRef.current = true;
+                    const rect = (e.target as Element).getBoundingClientRect();
+                    const menuH = 260;
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    const yPos = spaceBelow >= menuH
+                      ? rect.bottom + 6
+                      : Math.max(10, rect.top - menuH - 6);
+                    setPictoMenuPos({
+                      x: Math.max(10, Math.min(rect.left + rect.width / 2 - 115, window.innerWidth - 240)),
+                      y: yPos,
+                    });
+                    setPictoMenuSceneId((prev) => prev === node.id ? null : node.id);
+                  }}
 >
   {picto}
 </text>
@@ -362,6 +455,22 @@ export function SceneMap({ scenes, selectedSceneId, sessionId, onSelectScene, on
                   <circle cx={px + CELL_SIZE - 5} cy={py + 5} r="4" fill="#c9962a" stroke="#fff" strokeWidth="1" />
                 )}
 
+                {/* Bandeau état bas de case */}
+                <rect
+                  x={px} y={py + CELL_SIZE - 11}
+                  width={CELL_SIZE} height={11} rx="0"
+                  fill={node.isActive ? "#c9962a" : node.isVisited ? "#7aaa50" : "rgba(80,55,25,0.55)"}
+                  opacity="0.92"
+                />
+                <text
+                  x={center.x} y={py + CELL_SIZE - 4}
+                  textAnchor="middle" fontSize="5.5"
+                  fill="#fff" fontFamily="'Cinzel', serif" fontWeight="700"
+                  style={{ pointerEvents: "none", userSelect: "none", letterSpacing: "0.04em" }}
+                >
+                  {node.isActive ? "ACTIVE" : node.isVisited ? "VISITÉE" : ""}
+                </text>
+
                 {/* Pulse actif */}
                 {node.isActive && (
                   <rect x={px - 2} y={py - 2} width={CELL_SIZE + 4} height={CELL_SIZE + 4} rx="6"
@@ -372,6 +481,13 @@ export function SceneMap({ scenes, selectedSceneId, sessionId, onSelectScene, on
               </g>
             );
           })}
+          {/* Brume bords */}
+          <rect width={svgW} height={svgH} fill="url(#mistL)" style={{pointerEvents:"none"}}/>
+          <rect width={svgW} height={svgH} fill="url(#mistR)" style={{pointerEvents:"none"}}/>
+          <rect width={svgW} height={svgH} fill="url(#mistT)" style={{pointerEvents:"none"}}/>
+          <rect width={svgW} height={svgH} fill="url(#mistB)" style={{pointerEvents:"none"}}/>
+          {/* Vignette coins */}
+          <rect width={svgW} height={svgH} fill="url(#vignette)" style={{pointerEvents:"none"}}/>
         </svg>
       </div>
 
@@ -379,8 +495,8 @@ export function SceneMap({ scenes, selectedSceneId, sessionId, onSelectScene, on
       {pictoMenuSceneId && (
         <div style={{
           position: "fixed",
-          top: Math.min(pictoMenuPos.y, window.innerHeight - 240),
-          left: Math.max(10, Math.min(pictoMenuPos.x, window.innerWidth - 240)),
+          top: pictoMenuPos.y,
+          left: pictoMenuPos.x,
           zIndex: 9999,
           backgroundColor: "#faf3e0",
           border: "2px solid #c9962a",
@@ -424,6 +540,10 @@ export function SceneMap({ scenes, selectedSceneId, sessionId, onSelectScene, on
         @keyframes dofusPulse {
           0%, 100% { opacity: 0.8; }
           50% { opacity: 0.2; }
+        }
+        @keyframes markerPulse {
+          0%, 100% { opacity: 1; stroke-width: 3; }
+          50% { opacity: 0.4; stroke-width: 5; }
         }
       `}</style>
     </div>
