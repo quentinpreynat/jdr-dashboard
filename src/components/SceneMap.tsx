@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSceneMapLayout, NODE_W, NODE_H } from "../hooks/useSceneMapLayout";
-
-// ── Types ────────────────────────────────────────────────────────────────────
+import { useSceneMapLayout, CELL_SIZE, CELL_GAP } from "../hooks/useSceneMapLayout";
 
 interface Scene {
   id: string;
@@ -9,11 +7,7 @@ interface Scene {
   picto?: string;
   liveNotes?: unknown[];
   choices?: Array<{
-    id: string;
-    label: string;
-    targetType: string;
-    targetId: string;
-    intent?: string;
+    id: string; label: string; targetType: string; targetId: string; intent?: string;
   }>;
 }
 
@@ -22,29 +16,7 @@ interface SceneMapProps {
   selectedSceneId: string | null;
   sessionId: string;
   onSelectScene: (sceneId: string) => void;
-  onClose: () => void;
   onUpdateScenePicto?: (sceneId: string, picto: string) => void;
-}
-
-const intentColors: Record<string, string> = {
-  talk: "#4a9eff",
-  explore: "#4caf50",
-  move: "#ff9800",
-  attack: "#f44336",
-  search: "#9c27b0",
-  other: "#8b5e2a",
-};
-
-function getIntentColor(intent?: string) {
-  return intentColors[intent ?? "other"] ?? intentColors.other;
-}
-
-function getIntentLabel(intent?: string) {
-  const labels: Record<string, string> = {
-    talk: "Parler", explore: "Explorer", move: "Se déplacer",
-    attack: "Attaquer", search: "Chercher", other: "Autre",
-  };
-  return labels[intent ?? "other"] ?? "Autre";
 }
 
 const PICTO_LIST = [
@@ -63,7 +35,38 @@ const PICTO_LIST = [
   { icon: "📍", label: "Autre" },
 ];
 
-function getAutoPictogram(title: string): string {
+// Couleurs harmonisées avec le thème parchemin — plus claires et chaudes
+function getCellColor(picto: string): { bg: string; border: string } {
+  switch (picto) {
+    case "🌲": return { bg: "#4a7a30", border: "#7ab850" };
+    case "🌾": return { bg: "#a08030", border: "#d0b060" };
+    case "🏘️": return { bg: "#b08a58", border: "#d8b888" };
+    case "🏙️": return { bg: "#7878a0", border: "#a8a8c8" };
+    case "🍺": return { bg: "#a06020", border: "#d09848" };
+    case "🏰": return { bg: "#807070", border: "#b0a0a0" };
+    case "🗼": return { bg: "#889070", border: "#b8c098" };
+    case "⛪": return { bg: "#8888c0", border: "#b8b8e8" };
+    case "🕳️": return { bg: "#504030", border: "#806858" };
+    case "🛤️": return { bg: "#a08860", border: "#c8b090" };
+    case "🌊": return { bg: "#3878a8", border: "#60a8d8" };
+    case "⛰️": return { bg: "#909888", border: "#b8c0b0" };
+    case "🏪": return { bg: "#a08050", border: "#c8a878" };
+    case "⚔️": return { bg: "#a04040", border: "#d07070" };
+    case "⛏️": return { bg: "#906868", border: "#b89090" };
+    case "⚓": return { bg: "#406090", border: "#70a0c0" };
+    case "📚": return { bg: "#906040", border: "#c09070" };
+    case "⛓️": return { bg: "#606060", border: "#909090" };
+    case "⛺": return { bg: "#708050", border: "#a0b078" };
+    case "🌙": return { bg: "#404878", border: "#7080b8" };
+    case "☀️": return { bg: "#b09020", border: "#e0c050" };
+    case "🔥": return { bg: "#b04020", border: "#e07050" };
+    case "💀": return { bg: "#686050", border: "#989080" };
+    case "🗝️": return { bg: "#807060", border: "#b0a088" };
+    default:   return { bg: "#8a7050", border: "#b09878" };
+  }
+}
+
+function getAutoPicto(title: string): string {
   const t = title.toLowerCase();
   if (t.includes("forêt") || t.includes("foret") || t.includes("bois")) return "🌲";
   if (t.includes("champ") || t.includes("blé") || t.includes("ferme")) return "🌾";
@@ -85,14 +88,11 @@ function getAutoPictogram(title: string): string {
   return "📍";
 }
 
-export function SceneMap({
-  scenes, selectedSceneId, sessionId,
-  onSelectScene, onClose, onUpdateScenePicto,
-}: SceneMapProps) {
+export function SceneMap({ scenes, selectedSceneId, sessionId, onSelectScene, onUpdateScenePicto }: SceneMapProps) {
   const storageKey = `mj-scene-map-${sessionId}`;
   const visitedKey = `mj-scene-visited-${sessionId}`;
 
-  const [overrides, setOverrides] = useState<Record<string, { x: number; y: number }>>(() => {
+  const [gridOverrides, setGridOverrides] = useState<Record<string, { col: number; row: number }>>(() => {
     try { return JSON.parse(localStorage.getItem(storageKey) ?? "{}"); } catch { return {}; }
   });
   const [visitedSceneIds, setVisitedSceneIds] = useState<Set<string>>(() => {
@@ -112,38 +112,43 @@ export function SceneMap({
     });
   }, [selectedSceneId, visitedKey]);
 
-  const { nodes, edges } = useSceneMapLayout(scenes, selectedSceneId, visitedSceneIds, overrides);
+  const { nodes, edges } = useSceneMapLayout(scenes, selectedSceneId, visitedSceneIds, gridOverrides);
 
-  const svgRef = useRef<SVGSVGElement>(null);
-  const draggingRef = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef<{ id: string; startX: number; startY: number; origCol: number; origRow: number } | null>(null);
   const hadDraggedRef = useRef(false);
+  // FIX picto : on track si un picto-tap est en cours pour ignorer le onClick du g
+  const pictoTapRef = useRef(false);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent, nodeId: string, nodeX: number, nodeY: number) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent, nodeId: string, col: number, row: number) => {
     e.preventDefault(); e.stopPropagation();
     hadDraggedRef.current = false;
-    draggingRef.current = { id: nodeId, startX: e.clientX, startY: e.clientY, origX: nodeX, origY: nodeY };
+    draggingRef.current = { id: nodeId, startX: e.clientX, startY: e.clientY, origCol: col, origRow: row };
   }, []);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent, nodeId: string, nodeX: number, nodeY: number) => {
+  const handleTouchStart = useCallback((e: React.TouchEvent, nodeId: string, col: number, row: number) => {
     e.stopPropagation();
-    const touch = e.touches[0];
+    const t = e.touches[0];
     hadDraggedRef.current = false;
-    draggingRef.current = { id: nodeId, startX: touch.clientX, startY: touch.clientY, origX: nodeX, origY: nodeY };
+    draggingRef.current = { id: nodeId, startX: t.clientX, startY: t.clientY, origCol: col, origRow: row };
   }, []);
 
   useEffect(() => {
+    const step = CELL_SIZE + CELL_GAP;
     const onMove = (clientX: number, clientY: number) => {
       if (!draggingRef.current) return;
       const dx = clientX - draggingRef.current.startX;
       const dy = clientY - draggingRef.current.startY;
-      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) hadDraggedRef.current = true;
-      const { id, origX, origY } = draggingRef.current;
-      setOverrides((prev) => ({ ...prev, [id]: { x: Math.max(8, origX + dx), y: Math.max(8, origY + dy) } }));
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) hadDraggedRef.current = true;
+      const { id, origCol, origRow } = draggingRef.current;
+      const newCol = Math.max(0, origCol + Math.round(dx / step));
+      const newRow = Math.max(0, origRow + Math.round(dy / step));
+      setGridOverrides((prev) => ({ ...prev, [id]: { col: newCol, row: newRow } }));
     };
     const onEnd = () => {
       if (!draggingRef.current) return;
       draggingRef.current = null;
-      setOverrides((prev) => {
+      setGridOverrides((prev) => {
         try { localStorage.setItem(storageKey, JSON.stringify(prev)); } catch {}
         return prev;
       });
@@ -163,258 +168,264 @@ export function SceneMap({
     };
   }, [storageKey]);
 
-  const padding = 60;
-  const maxX = Math.max(...nodes.map((n) => n.x + NODE_W), 600) + padding;
-  const maxY = Math.max(...nodes.map((n) => n.y + NODE_H), 400) + padding;
-
   function handleReset() {
-    setOverrides({});
+    setGridOverrides({});
     try { localStorage.removeItem(storageKey); } catch {}
   }
 
-  function renderEdge(fromId: string, toId: string, intent: string | undefined, edgeIndex: number) {
-    const from = nodes.find((n) => n.id === fromId);
-    const to = nodes.find((n) => n.id === toId);
-    if (!from || !to) return null;
-    const color = getIntentColor(intent);
-    const x1 = from.x + NODE_W / 2, y1 = from.y + NODE_H;
-    const x2 = to.x + NODE_W / 2, y2 = to.y;
-    const midY = (y1 + y2) / 2, midX = (x1 + x2) / 2;
-    const path = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
-    const labelText = getIntentLabel(intent);
-    const labelWidth = labelText.length * 4.5 + 8;
-    return (
-      <g key={`edge-${fromId}-${toId}-${edgeIndex}`}>
-        <defs>
-          <marker id={`arrow-${fromId}-${toId}-${edgeIndex}`} markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-            <path d="M0,0 L0,6 L8,3 z" fill={color} />
-          </marker>
-        </defs>
-        <path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeOpacity="0.8" markerEnd={`url(#arrow-${fromId}-${toId}-${edgeIndex})`} />
-        <rect x={midX - labelWidth / 2} y={midY - 7} width={labelWidth} height={12} rx={3} fill="#fdf3d0" opacity="0.85" />
-        <text x={midX} y={midY + 2} textAnchor="middle" fontSize="8" fill={color} opacity="0.9" style={{ fontFamily: "'Cinzel', serif", pointerEvents: "none" }}>
-          {labelText}
-        </text>
-      </g>
-    );
+  // FIX décalage : PADDING = 8, les cases s'alignent exactement sur la grille
+  const PADDING = 8;
+  const step = CELL_SIZE + CELL_GAP;
+  const maxCol = Math.max(...nodes.map((n) => n.col), 4) + 2;
+  const maxRow = Math.max(...nodes.map((n) => n.row), 3) + 2;
+  const svgW = maxCol * step + PADDING * 2;
+  const svgH = maxRow * step + PADDING * 2;
+
+  // Centre d'une case — aligné avec le pattern
+  function cellCenter(col: number, row: number) {
+    return {
+      x: PADDING + col * step + CELL_SIZE / 2,
+      y: PADDING + row * step + CELL_SIZE / 2,
+    };
   }
 
-  function renderNode(node: typeof nodes[0]) {
-    const isActive = node.isActive;
-    const isVisited = node.isVisited;
-    const sceneData = scenes.find((s) => s.id === node.id);
-    const picto = sceneData?.picto || getAutoPictogram(node.title);
-    let bgColor = "#fdf3d0", borderColor = "#8b5e2a", borderWidth = 1.5, textColor = "#3d1f00";
-    if (isActive) { bgColor = "#c9962a"; borderColor = "#f0c060"; borderWidth = 2; textColor = "#fff"; }
-    else if (isVisited) { bgColor = "#e8d08a"; }
+  // Coin haut-gauche d'une case
+  function cellOrigin(col: number, row: number) {
+    return {
+      x: PADDING + col * step,
+      y: PADDING + row * step,
+    };
+  }
+
+  if (scenes.length === 0) {
     return (
-      <g key={node.id} style={{ cursor: "grab" }}
-        onMouseDown={(e) => handleMouseDown(e, node.id, node.x, node.y)}
-        onTouchStart={(e) => handleTouchStart(e, node.id, node.x, node.y)}
-        onClick={() => { if (hadDraggedRef.current) return; onSelectScene(node.id); }}
-      >
-        <rect x={node.x + 2} y={node.y + 3} width={NODE_W} height={NODE_H} rx="5" fill="rgba(0,0,0,0.2)" />
-        <rect x={node.x} y={node.y} width={NODE_W} height={NODE_H} rx="5" fill={bgColor} stroke={borderColor} strokeWidth={borderWidth} />
-        <circle cx={node.x + NODE_W / 2} cy={node.y - 2} r="4" fill="#8b1a1a" stroke="#f0a0a0" strokeWidth="1" />
-        {/* Pictogramme — tap pour ouvrir sélecteur */}
-        <text
-          x={node.x + 7} y={node.y + NODE_H / 2 + 4}
-          fontSize="11"
-          style={{ pointerEvents: "all", cursor: "pointer", userSelect: "none" }}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (hadDraggedRef.current) return;
-            const svgRect = svgRef.current?.getBoundingClientRect();
-            const panelLeft = 0;
-            setPictoMenuPos({
-              x: panelLeft + node.x + 10,
-              y: (svgRect?.top ?? 0) + node.y + NODE_H + 8,
-            });
-            setPictoMenuSceneId((prev) => (prev === node.id ? null : node.id));
-          }}
-        >
-          {picto}
-        </text>
-        {node.hasNotes && <circle cx={node.x + NODE_W - 6} cy={node.y + 6} r="3" fill="#c9962a" stroke="#fff" strokeWidth="1" />}
-        <foreignObject x={node.x + 20} y={node.y + 4} width={NODE_W - 24} height={NODE_H - 8}>
-          <div style={{
-            fontFamily: "'Cinzel', serif", fontSize: "7px",
-            fontWeight: isActive ? "700" : "600", color: textColor,
-            lineHeight: "1.3", overflow: "hidden",
-            display: "-webkit-box", WebkitLineClamp: 3,
-            WebkitBoxOrient: "vertical", wordBreak: "break-word",
-          }}>
-            {node.title}
-          </div>
-        </foreignObject>
-        {isActive && (
-          <rect x={node.x - 2} y={node.y - 2} width={NODE_W + 4} height={NODE_H + 4} rx="7"
-            fill="none" stroke="#f0c060" strokeWidth="2" opacity="0.6"
-            style={{ animation: "pulse-ring 2s ease infinite" }}
-          />
-        )}
-      </g>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "180px", color: "#7a5c2a", fontFamily: "'Cinzel', serif", fontSize: "0.8rem", textAlign: "center" }}>
+        Aucune scène dans cette session.
+      </div>
     );
   }
 
   return (
-    <>
-      <style>{`
-        @keyframes pulse-ring {
-          0% { opacity: 0.6; transform: scale(1); }
-          50% { opacity: 0.2; transform: scale(1.02); }
-          100% { opacity: 0.6; transform: scale(1); }
-        }
-      `}</style>
-
-      {/* Panneau */}
-      <div style={{
-        position: "fixed", top: 0, left: 0, height: "100vh", width: "300px",
-        zIndex: 46, display: "flex", flexDirection: "column",
-        backgroundColor: "#2c1a08", borderRight: "2px solid #8b5e2a",
-        boxShadow: "4px 0 24px rgba(0,0,0,0.6)",
-      }}>
-        {/* Header */}
-        <div style={{
-          padding: "0.75rem 1rem", backgroundColor: "#2c1a08",
-          borderBottom: "1px solid rgba(139,94,42,0.4)",
-          display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0,
-        }}>
-          <div>
-            <h3 style={{ fontFamily: "'Uncial Antiqua', serif", fontSize: "1rem", color: "#c9962a", margin: 0 }}>
-              🗺️ Carte des scènes
-            </h3>
-            <p style={{ fontSize: "0.65rem", color: "#8b6914", margin: "2px 0 0", fontStyle: "italic" }}>
-              Tap sur l'icône pour changer le pictogramme
-            </p>
-          </div>
-          <button type="button" onClick={handleReset}
-            style={{ fontSize: "0.6rem", padding: "3px 7px", background: "rgba(139,94,42,0.2)", border: "1px solid rgba(139,94,42,0.4)", borderRadius: "4px", color: "#c9962a", cursor: "pointer", fontFamily: "'Cinzel', serif" }}
-            title="Réinitialiser les positions"
-          >
-            Réinitialiser
-          </button>
-        </div>
-
-        {/* Légende */}
-        <div style={{ padding: "0.4rem 0.75rem", backgroundColor: "#2c1a08", borderBottom: "1px solid rgba(139,94,42,0.2)", display: "flex", flexWrap: "wrap", gap: "6px", flexShrink: 0 }}>
-          {[{ color: "#c9962a", label: "Active" }, { color: "#e8d5a0", label: "Visitée" }, { color: "#fdf6e3", label: "Non visitée" }].map((item) => (
-            <div key={item.label} style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-              <div style={{ width: "10px", height: "10px", borderRadius: "2px", background: item.color, border: "1px solid #8b5e2a" }} />
-              <span style={{ fontSize: "0.6rem", color: "#c9962a", fontFamily: "'Cinzel', serif" }}>{item.label}</span>
-            </div>
-          ))}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", marginTop: "2px", width: "100%" }}>
-            {Object.entries(intentColors).map(([intent, color]) => (
-              <div key={intent} style={{ display: "flex", alignItems: "center", gap: "3px" }}>
-                <div style={{ width: "14px", height: "2px", background: color, borderRadius: "1px" }} />
-                <span style={{ fontSize: "0.55rem", color: "#c9962a" }}>{getIntentLabel(intent)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* SVG */}
-        <div style={{ flex: 1, overflow: "auto", position: "relative" }}>
-          {scenes.length === 0 ? (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#7a5c2a", fontFamily: "'Cinzel', serif", fontSize: "0.8rem", textAlign: "center", padding: "2rem" }}>
-              Aucune scène dans cette session.
-            </div>
-          ) : (
-            <svg ref={svgRef} width={maxX} height={maxY} style={{ display: "block", minWidth: "100%" }}>
-              <defs>
-                <pattern id="parchmentTexture" patternUnits="userSpaceOnUse" width="4" height="4">
-                  <rect width="4" height="4" fill="transparent" />
-                  <line x1="0" y1="0" x2="4" y2="4" stroke="rgba(139,94,42,0.08)" strokeWidth="0.5" />
-                </pattern>
-                <filter id="paper">
-                  <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
-                  <feColorMatrix type="saturate" values="0" />
-                  <feBlend in="SourceGraphic" mode="multiply" />
-                </filter>
-              </defs>
-              <rect width={maxX} height={maxY} fill="#f5e6c8" filter="url(#paper)" />
-              <rect width={maxX} height={maxY} fill="url(#parchmentTexture)" opacity="0.3" />
-              {Array.from({ length: Math.ceil(maxX / 40) }).map((_, i) => (
-                <line key={`vg-${i}`} x1={i * 40} y1={0} x2={i * 40} y2={maxY} stroke="rgba(139,94,42,0.12)" strokeWidth="1" />
-              ))}
-              {Array.from({ length: Math.ceil(maxY / 40) }).map((_, i) => (
-                <line key={`hg-${i}`} x1={0} y1={i * 40} x2={maxX} y2={i * 40} stroke="rgba(139,94,42,0.12)" strokeWidth="1" />
-              ))}
-              {edges.map((edge, i) => renderEdge(edge.from, edge.to, edge.intent, i))}
-              {nodes.map((node) => renderNode(node))}
-            </svg>
-          )}
-        </div>
+    <div style={{ position: "relative" }}>
+      {/* Barre contrôle */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px", padding: "4px 6px", background: "rgba(139,94,42,0.15)", borderRadius: "6px", border: "1px solid rgba(139,94,42,0.3)" }}>
+        <span style={{ fontSize: "0.6rem", color: "#8b6914", fontStyle: "italic", fontFamily: "'Cinzel', serif" }}>
+          Glisser · Tap icône pour changer
+        </span>
+        <button type="button" onClick={handleReset}
+          style={{ fontSize: "0.6rem", padding: "2px 6px", background: "rgba(139,94,42,0.2)", border: "1px solid rgba(139,94,42,0.4)", borderRadius: "4px", color: "#c9962a", cursor: "pointer", fontFamily: "'Cinzel', serif" }}>
+          Réinit.
+        </button>
       </div>
 
-      {/* Flèche fermeture — seul moyen de fermer */}
-      <button
-        type="button"
-        onClick={onClose}
-        style={{
-          position: "fixed", top: "50%", left: "300px",
-          transform: "translateY(-50%)",
-          zIndex: 47, width: "26px", height: "60px",
-          backgroundColor: "#2c1a08",
-          border: "2px solid #8b5e2a", borderLeft: "none",
-          borderRadius: "0 8px 8px 0",
-          color: "#c9962a", fontSize: "14px", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "3px 0 8px rgba(0,0,0,0.4)",
-        }}
-        aria-label="Fermer la carte"
-      >
-        ◀
-      </button>
+      {/* Légende */}
+      <div style={{ display: "flex", gap: "8px", marginBottom: "6px", flexWrap: "wrap" }}>
+        {[{ color: "#c9962a", label: "Active" }, { color: "#7aaa50", label: "Visitée" }, { color: "#8a7050", label: "Non visitée" }].map((item) => (
+          <div key={item.label} style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+            <div style={{ width: "10px", height: "10px", borderRadius: "2px", background: item.color, border: "1px solid rgba(201,150,42,0.4)" }} />
+            <span style={{ fontSize: "0.55rem", color: "#7a5c2a", fontFamily: "'Cinzel', serif" }}>{item.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* SVG grille */}
+      <div ref={containerRef} style={{ overflowX: "auto", overflowY: "auto", maxHeight: "280px", borderRadius: "8px", border: "1px solid rgba(139,94,42,0.4)" }}>
+        <svg width={svgW} height={svgH} style={{ display: "block" }}>
+          <defs>
+            {/* FIX : le pattern commence exactement à PADDING pour s'aligner avec les cases */}
+            <pattern id="dofusGrid" patternUnits="userSpaceOnUse" width={step} height={step} x={PADDING} y={PADDING}>
+              <rect width={step} height={step} fill="#e8d5a8" />
+              <rect x="2" y="2" width={step - 4} height={step - 4} fill="#ddc88a" rx="2" />
+            </pattern>
+          </defs>
+
+          {/* Fond parchemin clair — harmonisé avec la page */}
+            <rect width={svgW} height={svgH} fill="#efe2c2" />
+            <rect width={svgW} height={svgH} fill="url(#dofusGrid)" opacity="0.85" />
+
+          {/* Connexions pointillées */}
+          {edges.map((edge, i) => {
+            const fromNode = nodes.find((n) => n.id === edge.from);
+            const toNode = nodes.find((n) => n.id === edge.to);
+            if (!fromNode || !toNode) return null;
+            const from = cellCenter(fromNode.col, fromNode.row);
+            const to = cellCenter(toNode.col, toNode.row);
+            return (
+              <line key={`edge-${i}`}
+                x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+                stroke="rgba(139,94,42,0.7)" strokeWidth="2" strokeDasharray="5 3"
+              />
+            );
+          })}
+
+          {/* Cases des scènes */}
+          {nodes.map((node) => {
+            const sceneData = scenes.find((s) => s.id === node.id);
+            const picto = sceneData?.picto || getAutoPicto(node.title);
+            const colors = getCellColor(picto);
+            const { x: px, y: py } = cellOrigin(node.col, node.row);
+            const center = cellCenter(node.col, node.row);
+
+            let borderColor = colors.border;
+            let borderWidth = 2;
+            if (node.isActive) { borderColor = "#c9962a"; borderWidth = 3; }
+            else if (node.isVisited) { borderColor = "#7aaa50"; borderWidth = 2; }
+
+            return (
+              <g
+                key={node.id}
+                style={{ cursor: "grab" }}
+                onMouseDown={(e) => handleMouseDown(e, node.id, node.col, node.row)}
+                onTouchStart={(e) => handleTouchStart(e, node.id, node.col, node.row)}
+                onClick={() => {
+                  if (hadDraggedRef.current) return;
+                  if (pictoTapRef.current) { pictoTapRef.current = false; return; }
+                  onSelectScene(node.id);
+                }}
+              >
+                {/* Ombre */}
+                <rect x={px + 2} y={py + 2} width={CELL_SIZE} height={CELL_SIZE} rx="4" fill="rgba(0,0,0,0.25)" />
+
+                {/* Halo actif */}
+                {node.isActive && (
+                  <rect x={px - 3} y={py - 3} width={CELL_SIZE + 6} height={CELL_SIZE + 6} rx="7" fill="rgba(201,150,42,0.25)" />
+                )}
+{selectedSceneId === node.id && (
+  <circle
+    cx={px + CELL_SIZE / 2}
+    cy={py + CELL_SIZE / 2}
+    r={CELL_SIZE / 2 + 6}
+    fill="none"
+    stroke="#ffcc55"
+    strokeWidth="3"
+    style={{
+      filter: "drop-shadow(0 0 6px rgba(255,204,85,0.8))",
+      animation: "sceneMarker 1.5s ease-in-out infinite"
+    }}
+  />
+)}
+                {/* Case */}
+                <rect x={px} y={py} width={CELL_SIZE} height={CELL_SIZE} rx="4"
+                  fill={colors.bg} stroke={borderColor} strokeWidth={borderWidth} />
+
+                {/* Reflet haut */}
+                <rect x={px + 2} y={py + 2} width={CELL_SIZE - 4} height={12} rx="3" fill="rgba(255,255,255,0.15)" />
+
+                {/* Pictogramme — FIX : onMouseUp au lieu de onClick pour éviter le conflit */}
+                <text
+                  x={center.x}
+                   y={py + CELL_SIZE / 2 + 2}
+                    textAnchor="middle"
+                    fontSize="20"
+                 style={{
+                  pointerEvents: "all",
+                  cursor: "pointer",
+                  userSelect: "none"
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                      pictoTapRef.current = true
+
+    const containerRect = containerRef.current?.getBoundingClientRect()
+
+                     setPictoMenuPos({
+                       x: (containerRect?.left ?? 0) + px + CELL_SIZE / 2 - 110,
+                      y: (containerRect?.bottom ?? 0) + 8
+                      })
+
+                     setPictoMenuSceneId((prev) =>
+                       prev === node.id ? null : node.id
+                        )
+                      }}
+>
+  {picto}
+</text>
+
+                {/* Titre */}
+                <foreignObject x={px + 2} y={py + CELL_SIZE / 2 + 8} width={CELL_SIZE - 4} height={CELL_SIZE / 2 - 10}>
+                  <div style={{
+                    fontSize: "7px", fontFamily: "'Cinzel', serif",
+                    fontWeight: node.isActive ? "700" : "600",
+                    color: "#fff",
+                    textAlign: "center", lineHeight: "1.2",
+                    overflow: "hidden", display: "-webkit-box",
+                    WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+                    wordBreak: "break-word",
+                    textShadow: "0 1px 3px rgba(0,0,0,0.9)",
+                  }}>
+                    {node.title}
+                  </div>
+                </foreignObject>
+
+                {/* Point note */}
+                {node.hasNotes && (
+                  <circle cx={px + CELL_SIZE - 5} cy={py + 5} r="4" fill="#c9962a" stroke="#fff" strokeWidth="1" />
+                )}
+
+                {/* Pulse actif */}
+                {node.isActive && (
+                  <rect x={px - 2} y={py - 2} width={CELL_SIZE + 4} height={CELL_SIZE + 4} rx="6"
+                    fill="none" stroke="#c9962a" strokeWidth="2" opacity="0.8"
+                    style={{ animation: "dofusPulse 2s ease infinite" }}
+                  />
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
 
       {/* Menu pictogramme */}
       {pictoMenuSceneId && (
         <div style={{
           position: "fixed",
-          top: Math.min(pictoMenuPos.y, (typeof window !== "undefined" ? window.innerHeight : 600) - 230),
-          left: 10,
-          zIndex: 48,
-          backgroundColor: "#2c1a08",
-          border: "2px solid #8b5e2a",
+          top: Math.min(pictoMenuPos.y, window.innerHeight - 240),
+          left: Math.max(10, Math.min(pictoMenuPos.x, window.innerWidth - 240)),
+          zIndex: 9999,
+          backgroundColor: "#faf3e0",
+          border: "2px solid #c9962a",
           borderRadius: "8px",
-          padding: "8px",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.7)",
-          width: "280px",
+          padding: "10px",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+          width: "230px",
         }}>
-          <p style={{ fontSize: "0.65rem", color: "#c9962a", fontFamily: "'Cinzel', serif", margin: "0 0 6px", textAlign: "center" }}>
+          <p style={{ fontSize: "0.65rem", color: "#2c1a08", fontFamily: "'Cinzel', serif", margin: "0 0 8px", textAlign: "center", fontWeight: "600" }}>
             Choisir un pictogramme
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-            {PICTO_LIST.map(({ icon, label }) => (
-              <button key={icon} type="button" title={label}
-                onClick={() => {
-                  if (onUpdateScenePicto) onUpdateScenePicto(pictoMenuSceneId, icon);
-                  setPictoMenuSceneId(null);
-                }}
-                style={{
-                  width: "36px", height: "36px", fontSize: "18px",
-                  background: "rgba(139,94,42,0.2)", border: "1px solid rgba(139,94,42,0.4)",
-                  borderRadius: "4px", cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}
-              >
-                {icon}
-              </button>
-            ))}
+            {PICTO_LIST.map(({ icon, label }) => {
+              const c = getCellColor(icon);
+              return (
+                <button key={icon} type="button" title={label}
+                  onClick={() => {
+                    if (onUpdateScenePicto) onUpdateScenePicto(pictoMenuSceneId, icon);
+                    setPictoMenuSceneId(null);
+                  }}
+                  style={{
+                    width: "34px", height: "34px", fontSize: "18px",
+                    background: c.bg, border: `2px solid ${c.border}`,
+                    borderRadius: "4px", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  {icon}
+                </button>
+              );
+            })}
           </div>
           <button type="button" onClick={() => setPictoMenuSceneId(null)}
-            style={{ marginTop: "6px", width: "100%", fontSize: "0.65rem", padding: "4px", background: "rgba(122,26,26,0.3)", border: "1px solid rgba(122,26,26,0.5)", borderRadius: "4px", color: "#f0a0a0", cursor: "pointer" }}>
+            style={{ marginTop: "8px", width: "100%", fontSize: "0.65rem", padding: "5px", background: "rgba(122,26,26,0.1)", border: "1px solid rgba(122,26,26,0.4)", borderRadius: "4px", color: "#8b1a1a", cursor: "pointer", fontFamily: "'Cinzel', serif" }}>
             Annuler
           </button>
         </div>
       )}
 
-      {/* Overlay sans onClick */}
-      <div style={{
-        position: "fixed", top: 0, left: "300px", right: 0, bottom: 0,
-        zIndex: 44, background: "rgba(0,0,0,0.3)", backdropFilter: "blur(1px)",
-      }} aria-hidden="true" />
-    </>
+      <style>{`
+        @keyframes dofusPulse {
+          0%, 100% { opacity: 0.8; }
+          50% { opacity: 0.2; }
+        }
+      `}</style>
+    </div>
   );
 }

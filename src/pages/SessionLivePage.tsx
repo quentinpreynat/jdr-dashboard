@@ -107,7 +107,6 @@ export function SessionLivePage() {
   );
   const [noteText, setNoteText] = useState("");
   const [noteScope, setNoteScope] = useState<"scene" | "campaign">("scene");
-  const [showSceneMap, setShowSceneMap] = useState(false);
   const [clockLabel, setClockLabel] = useState(() =>
     new Date().toLocaleTimeString("fr-FR", {
       hour: "2-digit",
@@ -242,9 +241,6 @@ export function SessionLivePage() {
 
   const selectedScene =
     scenes.find((scene) => scene.id === selectedSceneId) ?? null;
-  const linkedNpcs = selectedScene
-    ? data.npcs.filter((npc) => selectedScene.linkedNpcIds.includes(npc.id))
-    : [];
   const linkedNpcIds = useMemo(() => {
     const ids = new Set<string>();
     if (session) {
@@ -541,7 +537,6 @@ export function SessionLivePage() {
           className="flex flex-wrap gap-8 px-6 py-4"
           style={{
             marginRight: `${rightPanelWidth + 5}px`,
-            marginLeft: showSceneMap ? "310px" : "0px",
             transition: "margin 240ms ease",
           }}
         >
@@ -723,7 +718,6 @@ export function SessionLivePage() {
           className="live-layout mx-auto w-full max-w-[1200px] min-w-0 px-6"
           style={{
             paddingRight: `${rightPanelWidth + 10}px`,
-            marginLeft: showSceneMap ? "310px" : "0px",
             transition: "margin 240ms ease",
           }}
         >
@@ -945,48 +939,20 @@ export function SessionLivePage() {
                   <section
                     className="section-card p-4 relative"
                     style={{
-                      boxShadow:
-                        "0 4px 16px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.2)",
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.2)",
+                      background: "#1a1208",
                     }}
                   >
-                    <p className="field-label mb-1">Personnages</p>
-                    <div className="mt-2 space-y-2">
-                      {linkedNpcs.map((npc) => (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setQuickPlaceId(null);
-                            setQuickItemId(null);
-                            setQuickNpcId(npc.id);
-                            setPanelMode("npc");
-                          }}
-                          key={npc.id}
-                          className="flex min-h-10 w-full items-center justify-between gap-3 rounded-md border border-stone-300 bg-white/60 px-3 py-2 text-left text-sm hover:bg-stone-100/70"
-                        >
-                          <div>
-                            <p className="font-medium">
-                              {npc.name || "PNJ sans nom"}
-                            </p>
-                            <p className="text-xs live-muted">
-                              {npc.role || "Aucun rôle"}
-                            </p>
-                          </div>
-                          <span
-                            className={
-                              attitudeStyles[npc.attitude] ??
-                              attitudeStyles.neutral
-                            }
-                          >
-                            {npc.attitude}
-                          </span>
-                        </button>
-                      ))}
-                      {linkedNpcs.length === 0 && (
-                        <p className="rounded-md border border-stone-300 bg-white/50 px-3 py-2 text-sm live-muted">
-                          Aucun personnage lié à cette scène.
-                        </p>
-                      )}
-                    </div>
+                    <p className="field-label mb-2" style={{ color: "#c9962a", fontFamily: "'Uncial Antiqua', serif" }}>🗺️ Carte des scènes</p>
+                    <SceneMap
+                      scenes={scenes}
+                      selectedSceneId={selectedSceneId}
+                      sessionId={sessionId ?? ""}
+                      onSelectScene={(sceneId) => setSelectedSceneId(sceneId)}
+                      onUpdateScenePicto={(sceneId, picto) => {
+                        updateScene(sessionId ?? "", sceneId, { picto });
+                      }}
+                    />
                   </section>
 
                   <section
@@ -1184,33 +1150,6 @@ export function SessionLivePage() {
           }}
         >
           <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => setShowSceneMap((prev) => !prev)}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "2px",
-                padding: "8px 4px",
-                cursor: "pointer",
-                border: "none",
-                borderRadius: "6px",
-                borderBottom: "1px solid rgba(139,94,42,0.3)",
-                backgroundColor: showSceneMap ? "#c9962a" : "#2c1a08",
-                color: showSceneMap ? "#fff" : "#c9962a",
-                overflow: "hidden",
-                width: "100%",
-              }}
-            >
-              <span className="flex flex-col items-center gap-1">
-                <span className="text-base">🗺️</span>
-                <span className="text-[10px] font-semibold tracking-wide">
-                  Carte
-                </span>
-              </span>
-            </button>
             <div className="menu-section">
               <button
                 type="button"
@@ -2392,21 +2331,7 @@ export function SessionLivePage() {
             </div>
           </aside>
         </>
-        {showSceneMap && (
-          <SceneMap
-            scenes={scenes}
-            selectedSceneId={selectedSceneId}
-            sessionId={sessionId ?? ""}
-            onSelectScene={(sceneId) => {
-              setSelectedSceneId(sceneId);
-              setShowSceneMap(false);
-            }}
-            onClose={() => setShowSceneMap(false)}
-            onUpdateScenePicto={(sceneId, picto) => {
-              updateScene(sessionId ?? "", sceneId, { picto });
-}}
-          />
-        )}
+
     </section>
   );
 }
