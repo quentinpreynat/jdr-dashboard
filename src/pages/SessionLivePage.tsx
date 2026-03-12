@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChoiceIcon } from "../components/ChoiceIcon";
 import { ImprovisationModal } from "../components/ImprovisationModal";
@@ -86,6 +86,8 @@ export function SessionLivePage() {
     updatePlayerCharacter,
     deletePlayerCharacter,
     findCampaignBySessionId,
+    addGlobalNote,
+    removeGlobalNote,
   } = useAppData();
   const { settings } = useSettings();
   const containerRef = useRef<HTMLElement | null>(null);
@@ -94,6 +96,7 @@ export function SessionLivePage() {
   const session = data.sessions.find((entry) => entry.id === sessionId);
   const campaign = sessionId ? findCampaignBySessionId(sessionId) : null;
   const places = campaign?.places ?? [];
+  const globalNotes = campaign?.globalNotes ?? [];
 
   const scenes = useMemo(() => session?.scenes ?? [], [session]);
 
@@ -101,6 +104,7 @@ export function SessionLivePage() {
     scenes[0]?.id ?? null,
   );
   const [noteText, setNoteText] = useState("");
+  const [noteScope, setNoteScope] = useState<"scene" | "campaign">("scene");
   const [clockLabel, setClockLabel] = useState(() =>
     new Date().toLocaleTimeString("fr-FR", {
       hour: "2-digit",
@@ -529,6 +533,183 @@ export function SessionLivePage() {
             </Link>
           </div>
         </header>
+        <div
+          className="flex flex-wrap gap-8 px-6 py-4"
+          style={{ marginRight: `${rightPanelWidth + 5}px` }}
+        >
+          {[...globalNotes].reverse().map((note, index) => {
+            const rotations = [-3, 1.5, -1, 2.5, -2, 1, -1.5, 3];
+            const rotation = rotations[index % rotations.length];
+
+            const parchmentStyles = [
+              "radial-gradient(ellipse at 35% 25%, #f2e0a0 0%, #d4a84b 50%, #b07830 100%)",
+              "radial-gradient(ellipse at 40% 30%, #ead898 0%, #c89a40 50%, #a06828 100%)",
+              "radial-gradient(ellipse at 30% 20%, #f8e8b0 0%, #ddb850 50%, #b88035 100%)",
+              "radial-gradient(ellipse at 45% 35%, #e8d090 0%, #c09038 50%, #906020 100%)",
+            ];
+            const bg = parchmentStyles[index % parchmentStyles.length];
+
+            return (
+              <div
+                key={note.id}
+                className="group relative flex-shrink-0"
+                style={{
+                  width: "160px",
+                  minHeight: "110px",
+                  marginTop: "14px",
+                  transform: `rotate(${rotation}deg)`,
+                  filter: `drop-shadow(0 8px 16px rgba(0,0,0,0.65)) 
+                 drop-shadow(0 2px 4px rgba(0,0,0,0.4))`,
+                  transition: "transform 0.2s ease, filter 0.2s ease",
+                }}
+                onMouseEnter={(event) => {
+                  (event.currentTarget as HTMLDivElement).style.transform =
+                    "rotate(0deg) scale(1.04)";
+                  (event.currentTarget as HTMLDivElement).style.filter =
+                    "drop-shadow(0 12px 24px rgba(0,0,0,0.7)) drop-shadow(0 4px 8px rgba(0,0,0,0.5))";
+                }}
+                onMouseLeave={(event) => {
+                  (event.currentTarget as HTMLDivElement).style.transform = `rotate(${rotation}deg)`;
+                  (event.currentTarget as HTMLDivElement).style.filter =
+                    "drop-shadow(0 8px 16px rgba(0,0,0,0.65)) drop-shadow(0 2px 4px rgba(0,0,0,0.4))";
+                }}
+              >
+                {/* Clou centré en haut */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "-10px",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: "22px",
+                    height: "22px",
+                    borderRadius: "50%",
+                    background: `
+          radial-gradient(circle at 30% 30%, 
+            #c0c0c0 0%, #707070 30%, 
+            #2a2a2a 60%, #0a0a0a 100%)
+        `,
+                    boxShadow: `
+          0 4px 10px rgba(0,0,0,0.9),
+          0 1px 3px rgba(0,0,0,0.7),
+          inset 0 1px 2px rgba(255,255,255,0.35),
+          inset 0 -1px 3px rgba(0,0,0,0.6)
+        `,
+                    zIndex: 10,
+                  }}
+                />
+
+                {/* Tête de clou — reflet */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "-8px",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: "8px",
+                    height: "8px",
+                    borderRadius: "50%",
+                    background:
+                      "radial-gradient(circle at 35% 35%, rgba(255,255,255,0.6), transparent)",
+                    zIndex: 11,
+                    pointerEvents: "none",
+                  }}
+                />
+
+                {/* Parchemin */}
+                <div
+                  style={{
+                    background: bg,
+                    borderRadius: "1px 5px 3px 2px",
+                    padding: "22px 14px 16px",
+                    position: "relative",
+                    minHeight: "105px",
+                    boxShadow: `
+          inset 0 2px 0 rgba(255,255,255,0.25),
+          inset 0 -2px 6px rgba(0,0,0,0.2),
+          inset 2px 0 4px rgba(0,0,0,0.1),
+          inset -2px 0 4px rgba(0,0,0,0.1)
+        `,
+                    clipPath: `polygon(
+          0% 4%, 1.5% 0%, 3.5% 2.5%, 6% 0.5%,
+          94% 0%, 96.5% 2%, 98.5% 0%, 100% 3%,
+          99% 94%, 100% 98%, 97.5% 100%, 95% 97.5%,
+          4% 100%, 1.5% 98.5%, 0% 100%
+        )`,
+                  }}
+                >
+                  {/* Texture lignes */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: `
+            repeating-linear-gradient(
+              0deg, transparent, transparent 11px,
+              rgba(101,67,33,0.07) 11px,
+              rgba(101,67,33,0.07) 12px
+            )
+          `,
+                      pointerEvents: "none",
+                    }}
+                  />
+
+                  {/* Bords brunis prononcés */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: `
+            radial-gradient(ellipse at top left, 
+              rgba(70,35,10,0.55) 0%, transparent 42%),
+            radial-gradient(ellipse at top right, 
+              rgba(70,35,10,0.5) 0%, transparent 42%),
+            radial-gradient(ellipse at bottom left, 
+              rgba(70,35,10,0.5) 0%, transparent 42%),
+            radial-gradient(ellipse at bottom right, 
+              rgba(70,35,10,0.55) 0%, transparent 42%),
+            radial-gradient(ellipse at center, 
+              rgba(255,230,150,0.25) 0%, transparent 65%)
+          `,
+                      pointerEvents: "none",
+                    }}
+                  />
+
+                  {/* Texte */}
+                  <p
+                    style={{
+                      fontFamily: "'Crimson Text', serif",
+                      fontSize: "0.75rem",
+                      lineHeight: "1.45",
+                      color: "#1e0f00",
+                      position: "relative",
+                      zIndex: 1,
+                      wordBreak: "break-word",
+                      textShadow: "0 1px 0 rgba(255,220,150,0.4)",
+                    }}
+                  >
+                    {note.text}
+                  </p>
+
+                  {/* Bouton supprimer */}
+                  <button
+                    type="button"
+                    onClick={() => removeGlobalNote(note.id)}
+                    className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-xs rounded-full w-5 h-5 flex items-center justify-center"
+                    style={{
+                      background: "rgba(122,26,26,0.8)",
+                      color: "#fff",
+                      zIndex: 2,
+                    }}
+                    aria-label="Supprimer"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
 
         <div
           className="live-layout mx-auto w-full max-w-[1200px] min-w-0 px-6"
@@ -873,44 +1054,108 @@ export function SessionLivePage() {
                         </p>
                       )}
                     </div>
-                    <div className="mt-3 flex flex-shrink-0 flex-col gap-2 lg:flex-row">
-                      <label className="flex min-h-11 items-center gap-2 text-xs live-muted">
-                        Ajouter à :
-                        <select
-                          value={noteTargetSceneId ?? ""}
-                          onChange={(event) =>
-                            setNoteTargetSceneId(event.target.value || null)
-                          }
-                          className="live-input min-h-11 w-44 flex-shrink-0 rounded-md px-3 py-2 text-sm"
-                        >
-                          {scenes.map((scene) => {
-                            const title =
-                              scene.title?.trim() || "Scène sans titre";
-                            return (
-                              <option key={scene.id} value={scene.id}>
-                                {title}
-                              </option>
-                            );
-                          })}
-                          {scenes.length === 0 && (
-                            <option value="">Aucune scène</option>
-                          )}
-                        </select>
-                      </label>
-                      <input
-                        ref={noteInputRef}
-                        value={noteText}
-                        onChange={(event) => setNoteText(event.target.value)}
-                        placeholder="Ajouter une note rapide..."
-                        className="live-input min-h-11 flex-1 min-w-0 rounded-md px-3 py-2 text-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddNote}
-                        className="btn-gold-medieval flex-shrink-0 px-4 py-2 text-sm"
+                    <div className="mt-3 flex flex-shrink-0 flex-col gap-2">
+                      {/* Toggle scène / campagne */}
+                      <div
+                        className="flex rounded-lg overflow-hidden border"
+                        style={{ borderColor: "rgba(139,94,42,0.4)" }}
                       >
-                        Ajouter
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => setNoteScope("scene")}
+                          className="flex-1 py-1.5 text-xs font-medium font-cinzel transition-all"
+                          style={{
+                            background:
+                              noteScope === "scene"
+                                ? "linear-gradient(160deg, #c9962a, #8a6010)"
+                                : "rgba(139,94,42,0.08)",
+                            color: noteScope === "scene" ? "#fff" : "#5a3010",
+                          }}
+                        >
+                          📜 Scène
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNoteScope("campaign")}
+                          className="flex-1 py-1.5 text-xs font-medium font-cinzel transition-all"
+                          style={{
+                            background:
+                              noteScope === "campaign"
+                                ? "linear-gradient(160deg, #c9962a, #8a6010)"
+                                : "rgba(139,94,42,0.08)",
+                            color:
+                              noteScope === "campaign" ? "#fff" : "#5a3010",
+                          }}
+                        >
+                          🗺️ Campagne
+                        </button>
+                      </div>
+
+                      {/* Sélecteur de scène — visible seulement en mode scène */}
+                      {noteScope === "scene" && (
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs live-muted flex-shrink-0">
+                            Scène :
+                          </label>
+                          <select
+                            value={noteTargetSceneId ?? ""}
+                            onChange={(event) =>
+                              setNoteTargetSceneId(event.target.value || null)
+                            }
+                            className="live-input flex-1 rounded-md px-2 py-1.5 text-xs"
+                          >
+                            {scenes.map((scene) => (
+                              <option key={scene.id} value={scene.id}>
+                                {scene.title?.trim() || "Scène sans titre"}
+                              </option>
+                            ))}
+                            {scenes.length === 0 && (
+                              <option value="">Aucune scène</option>
+                            )}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Champ de saisie */}
+                      <div className="flex gap-2">
+                        <input
+                          ref={noteScope === "scene" ? noteInputRef : undefined}
+                          value={noteText}
+                          onChange={(event) => setNoteText(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" && noteText.trim()) {
+                              if (noteScope === "campaign") {
+                                addGlobalNote(noteText.trim());
+                                setNoteText("");
+                              } else {
+                                handleAddNote();
+                              }
+                            }
+                          }}
+                          placeholder={
+                            noteScope === "campaign"
+                              ? "Note de campagne… (visible partout)"
+                              : "Note de scène… (Entrée pour valider)"
+                          }
+                          className="live-input min-h-10 flex-1 min-w-0 rounded-md px-3 py-2 text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!noteText.trim()) return;
+                            if (noteScope === "campaign") {
+                              addGlobalNote(noteText.trim());
+                              setNoteText("");
+                            } else {
+                              handleAddNote();
+                            }
+                          }}
+                          disabled={!noteText.trim()}
+                          className="btn-gold-medieval flex-shrink-0 px-4 py-2 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   </section>
                 </div>
@@ -1993,7 +2238,7 @@ export function SessionLivePage() {
                               <button
                                 type="button"
                                 onClick={() => handleSelectScene(scene.id)}
-                                className="card card-compact w-full text-left text-sm hover:bg-stone-100"
+                                className="w-full rounded-md border border-[#8b5e2a]/40 bg-[#fdf6e3] px-3 py-2 text-left text-sm font-medium text-amber-950 hover:bg-[#f5e6c0] hover:border-[#8b5e2a] transition-all shadow-sm"
                               >
                                 <p className="font-medium">
                                   {scene.title || "Scène sans titre"}

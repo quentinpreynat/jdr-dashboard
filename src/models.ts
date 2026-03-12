@@ -4,6 +4,11 @@ export interface Campaign {
   summary: string;
   tone: string;
   places: Place[];
+  globalNotes?: Array<{
+    id: string;
+    text: string;
+    createdAt: number;
+  }>;
   createdAt: string;
   updatedAt: string;
 }

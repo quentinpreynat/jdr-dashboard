@@ -17,6 +17,11 @@ export interface Campaign {
   npcs: Npc[];
   places: Place[];
   players: PlayerCharacter[];
+  globalNotes?: Array<{
+    id: string;
+    text: string;
+    createdAt: number;
+  }>;
 }
 
 type ParsedCampaign = Partial<Campaign> & { id?: unknown };
@@ -60,6 +65,13 @@ function normalizeCampaign(raw: ParsedCampaign): Campaign | null {
     npcs: toArray<Npc>((raw as Record<string, unknown>).npcs),
     places: toArray<Place>((raw as Record<string, unknown>).places),
     players: toArray<PlayerCharacter>((raw as Record<string, unknown>).players),
+    globalNotes: toArray<
+      {
+        id: string;
+        text: string;
+        createdAt: number;
+      }
+    >((raw as Record<string, unknown>).globalNotes),
   };
 }
 

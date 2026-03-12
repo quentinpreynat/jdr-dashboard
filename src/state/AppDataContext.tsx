@@ -37,6 +37,8 @@ interface AppDataContextValue {
   createCampaign(title: string): string;
   deleteCampaign(id: string): void;
   updateCampaign(fields: Partial<Omit<CampaignMeta, "id">>): void;
+  addGlobalNote(text: string): void;
+  removeGlobalNote(noteId: string): void;
   addPlace(campaignId: string, place: Omit<Place, "id">): string;
   updatePlace(
     campaignId: string,
@@ -119,6 +121,16 @@ function ensureCampaignTimestamps(campaign: CampaignMeta): CampaignMeta {
   return {
     ...campaign,
     places: campaign.places ?? [],
+    globalNotes: (campaign.globalNotes ?? []).map((note) => {
+      const createdAt =
+        typeof note.createdAt === "number"
+          ? note.createdAt
+          : Date.parse(String(note.createdAt));
+      return {
+        ...note,
+        createdAt: Number.isFinite(createdAt) ? createdAt : nowMs(),
+      };
+    }),
     createdAt: ensureTimestamp(campaign.createdAt, fallback),
     updatedAt: ensureTimestamp(campaign.updatedAt, fallback),
   };
@@ -229,6 +241,19 @@ function isLiveNote(
     typeof value.createdAt === "number" &&
     (value.createdFromSceneId === undefined ||
       typeof value.createdFromSceneId === "string")
+  );
+}
+
+function isGlobalNote(
+  value: unknown,
+): value is { id: string; text: string; createdAt: number } {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    typeof value.id === "string" &&
+    typeof value.text === "string" &&
+    typeof value.createdAt === "number"
   );
 }
 
@@ -380,6 +405,8 @@ function isCampaign(value: unknown): value is CampaignMeta {
     typeof value.title === "string" &&
     typeof value.summary === "string" &&
     typeof value.tone === "string" &&
+    (value.globalNotes === undefined ||
+      (Array.isArray(value.globalNotes) && value.globalNotes.every(isGlobalNote))) &&
     (value.places === undefined ||
       (Array.isArray(value.places) && value.places.every(isPlace)))
   );
@@ -420,6 +447,7 @@ function campaignToAppData(campaign: StoredCampaign): AppData {
       summary: campaign.summary ?? "",
       tone: campaign.tone ?? "",
       places: campaign.places ?? [],
+      globalNotes: campaign.globalNotes ?? [],
       createdAt,
       updatedAt,
     },
@@ -442,6 +470,7 @@ function appDataToCampaign(
     tone: next.campaign.tone,
     updatedAt: isoToMs(next.campaign.updatedAt, Date.now()),
     places: next.campaign.places ?? [],
+    globalNotes: next.campaign.globalNotes ?? [],
     scenes: next.sessions,
     npcs: next.npcs,
     players: next.pcs ?? [],
@@ -458,6 +487,7 @@ function createBlankCampaign(title: string): StoredCampaign {
     summary: "",
     tone: "",
     places: [],
+    globalNotes: [],
     scenes: [],
     npcs: [],
     players: [],
@@ -490,6 +520,7 @@ function createInitialCampaignState(): CampaignState {
       summary: legacySeed.campaign.summary,
       tone: legacySeed.campaign.tone,
       places: legacySeed.campaign.places ?? [],
+      globalNotes: legacySeed.campaign.globalNotes ?? [],
       scenes: legacySeed.sessions,
       npcs: legacySeed.npcs,
       players: legacySeed.pcs ?? [],
@@ -616,6 +647,39 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         updateCurrentCampaignData((prev) => ({
           ...prev,
           campaign: { ...prev.campaign, ...fields, updatedAt: timestamp },
+        }));
+      },
+      addGlobalNote(text) {
+        const trimmedText = text.trim();
+        if (!trimmedText) {
+          return;
+        }
+        const timestamp = nowIso();
+        const note = {
+          id: crypto.randomUUID(),
+          text: trimmedText,
+          createdAt: nowMs(),
+        };
+        updateCurrentCampaignData((prev) => ({
+          ...prev,
+          campaign: {
+            ...prev.campaign,
+            globalNotes: [...(prev.campaign.globalNotes ?? []), note],
+            updatedAt: timestamp,
+          },
+        }));
+      },
+      removeGlobalNote(noteId) {
+        const timestamp = nowIso();
+        updateCurrentCampaignData((prev) => ({
+          ...prev,
+          campaign: {
+            ...prev.campaign,
+            globalNotes: (prev.campaign.globalNotes ?? []).filter(
+              (note) => note.id !== noteId,
+            ),
+            updatedAt: timestamp,
+          },
         }));
       },
       findCampaignBySessionId(sessionId) {
