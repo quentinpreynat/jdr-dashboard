@@ -5,6 +5,9 @@ import { ImprovisationModal } from "../components/ImprovisationModal";
 import { ItemDetail } from "../components/ItemDetail";
 import { ItemEditor } from "../components/ItemEditor";
 import { SceneMap } from "../components/SceneMap";
+import { TutorialOverlay } from "../components/TutorialOverlay";
+import { WelcomeModal } from "../components/WelcomeModal";
+import { BookOpen, Map } from "lucide-react";
 import { addItem, deleteItem, getItems, updateItem } from "../lib/itemsStorage";
 import { useAppData } from "../state/AppDataContext";
 import { useSettings } from "../state/SettingsContext";
@@ -16,6 +19,8 @@ const attitudeStyles: Record<string, string> = {
   wary: "badge badge-wary",
   hostile: "badge badge-hostile",
 };
+
+const WELCOME_SEEN_KEY = "mj-welcome-seen";
 
 type SearchScope = "all" | "scenes" | "npcs" | "places" | "items";
 type SearchResult =
@@ -77,6 +82,7 @@ function makeSnippet(
   return `${slice.slice(0, maxLength)}…`;
 }
 
+
 export function SessionLivePage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const {
@@ -91,7 +97,7 @@ export function SessionLivePage() {
     addGlobalNote,
     removeGlobalNote,
   } = useAppData();
-  const { settings } = useSettings();
+  const { settings, updateSettings, tutorialResetSignal } = useSettings();
   const containerRef = useRef<HTMLElement | null>(null);
   const noteInputRef = useRef<HTMLInputElement | null>(null);
   const scenePanelRef = useRef<HTMLDivElement | null>(null);
@@ -154,7 +160,20 @@ export function SessionLivePage() {
   const [flashSceneId, setFlashSceneId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [items, setItems] = useState<Item[]>(() => getItems());
-
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [showMapBeginner, setShowMapBeginner] = useState(false);
+  // Aide contextuelle choix (mode guidé)
+  const [activeChoiceDrawer, setActiveChoiceDrawer] = useState<{
+    label: string;
+    targetType: string | null;
+    targetId: string | null;
+  } | null>(null);
+  // Minuteur de scène
+  const [sceneStartTime, setSceneStartTime] = useState<number>(() => Date.now());
+  const [sceneElapsed, setSceneElapsed] = useState(0);
+  // Statut PNJ en session
+  const [npcStatus, setNpcStatus] = useState<Record<string, "active" | "out" | "observer">>({});
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (event.key === "mj-items") {
@@ -186,6 +205,20 @@ export function SessionLivePage() {
     const interval = window.setInterval(updateClock, 30_000);
     return () => window.clearInterval(interval);
   }, []);
+
+  // Minuteur — repart à zéro à chaque changement de scène
+  useEffect(() => {
+    setSceneStartTime(Date.now());
+    setSceneElapsed(0);
+    setActiveChoiceDrawer(null);
+  }, [selectedSceneId]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setSceneElapsed(Math.floor((Date.now() - sceneStartTime) / 1000));
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [sceneStartTime]);
 
   useEffect(() => {
     console.info("[SessionLive] mounted", { sessionId });
@@ -229,6 +262,12 @@ export function SessionLivePage() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [panelMode]);
+
+  useEffect(() => {
+    if (!settings.expertMode && rightPanelTab && rightPanelTab !== "scenes") {
+      setRightPanelTab(null);
+    }
+  }, [rightPanelTab, settings.expertMode]);
 
   if (!session || !sessionId) {
     return (
@@ -305,6 +344,32 @@ export function SessionLivePage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+
+  useEffect(() => {
+    if (settings.expertMode) {
+      setShowWelcome(false);
+      setShowTutorial(false);
+      return;
+    }
+    try {
+      const seen = localStorage.getItem(WELCOME_SEEN_KEY) === "true";
+      setShowWelcome(!seen);
+    } catch {
+      setShowWelcome(false);
+    }
+  }, [settings.expertMode, tutorialResetSignal]);
+
+
+  const handleWelcomeClose = () => {
+    setShowWelcome(false);
+    try {
+      localStorage.setItem(WELCOME_SEEN_KEY, "true");
+    } catch {
+      // Ignore storage failures (private mode, quota).
+    }
+    setShowTutorial(true);
+  };
 
   function handleAddNote() {
     if (!selectedScene) {
@@ -445,6 +510,23 @@ export function SessionLivePage() {
     return { currentSession, otherCount };
   }, [quickPlace, data.sessions, session]);
 
+  function formatElapsed(seconds: number): string {
+    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  }
+
+  const totalChoicesPlayed = Object.values(usedChoiceIds).reduce(
+    (sum, ids) => sum + ids.length, 0,
+  );
+  const totalNotes = scenes.reduce(
+    (sum, scene) => sum + (scene.liveNotes?.length ?? 0), 0,
+  );
+  const currentSceneIndex = scenes.findIndex((s) => s.id === selectedSceneId);
+  const sceneProgressLabel = currentSceneIndex >= 0
+    ? `${currentSceneIndex + 1} / ${scenes.length}`
+    : `— / ${scenes.length}`;
+
   function handleSelectScene(sceneId: string) {
     setSelectedSceneId(sceneId);
     setFlashSceneId(sceneId);
@@ -484,6 +566,16 @@ export function SessionLivePage() {
       {showImprovisation && (
         <ImprovisationModal onClose={() => setShowImprovisation(false)} />
       )}
+      {showWelcome && <WelcomeModal onClose={handleWelcomeClose} />}
+      
+      {/* 🎓 TUTORIEL INTERACTIF */}
+      <TutorialOverlay
+        isOpen={showTutorial}
+        onClose={() => setShowTutorial(false)}
+      />
+      
+      {/* 🎉 SYSTÈME DE NOTIFICATIONS */}
+      
       <div className="space-y-6 py-5">
         <header
           className="relative flex flex-wrap items-center justify-between gap-3 px-6"
@@ -493,7 +585,7 @@ export function SessionLivePage() {
             borderRadius: "2px 12px 2px 12px",
             padding: "1rem 1.5rem",
             boxShadow: "4px 4px 20px rgba(0,0,0,0.3)",
-            marginRight: `${rightPanelWidth + 5}px`,
+            marginRight: settings.expertMode ? `${rightPanelWidth + 5}px` : 0,
             transition: "margin 240ms ease",
           }}
         >
@@ -507,9 +599,11 @@ export function SessionLivePage() {
             <h2 className="page-title text-2xl">
               {session.title || "Session sans titre"}
             </h2>
-            <p className="text-sm text-stone-700">
-              {session.objective || "Aucun objectif défini."}
-            </p>
+            {settings.expertMode && (
+              <p className="text-sm text-stone-700">
+                {session.objective || "Aucun objectif défini."}
+              </p>
+            )}
             {session.openingText && (
               <p className="mt-2 max-w-2xl text-sm italic text-stone-700">
                 {session.openingText}
@@ -517,9 +611,55 @@ export function SessionLivePage() {
             )}
           </div>
           <div className="flex items-center gap-3">
+            <div
+              className="flex items-center gap-1 rounded-full border px-1 py-1"
+              style={{
+                borderColor: "#c9962a",
+                background: "rgba(201, 150, 42, 0.12)",
+                fontFamily: "'Cinzel', serif",
+                boxShadow: "inset 0 0 0 1px rgba(139,94,42,0.15)",
+              }}
+              title="Changer le mode d'affichage"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  updateSettings({ expertMode: false });
+                  setShowMapBeginner(false);
+                }}
+                aria-pressed={!settings.expertMode}
+                className="px-3 py-1.5 text-xs font-semibold transition"
+                style={{
+                  borderRadius: "999px",
+                  color: !settings.expertMode ? "#fff" : "#5a3010",
+                  background: !settings.expertMode
+                    ? "linear-gradient(160deg, #c9962a, #8a6010)"
+                    : "transparent",
+                }}
+              >
+                🎓 Guidé
+              </button>
+              <button
+                type="button"
+                onClick={() => updateSettings({ expertMode: true })}
+                aria-pressed={settings.expertMode}
+                className="px-3 py-1.5 text-xs font-semibold transition"
+                style={{
+                  borderRadius: "999px",
+                  color: settings.expertMode ? "#fff" : "#5a3010",
+                  background: settings.expertMode
+                    ? "linear-gradient(160deg, #c9962a, #8a6010)"
+                    : "transparent",
+                }}
+              >
+                🧙 Expert
+              </button>
+            </div>
+
             <span className="badge badge-neutral px-3 py-2 text-sm">
               {clockLabel}
             </span>
+            {settings.expertMode && (
             <button
               type="button"
               onClick={() => setPanelMode("search")}
@@ -528,6 +668,7 @@ export function SessionLivePage() {
             >
               🔍
             </button>
+            )}
             <Link
               to={`/sessions/${sessionId}`}
               className="btn-outline-medieval text-sm"
@@ -535,90 +676,143 @@ export function SessionLivePage() {
               Retour aux détails
             </Link>
           </div>
+
+          {/* 🎓 Barre de progression — intégrée dans le header, mode guidé */}
+          {!settings.expertMode && (
+            <div
+              className="w-full mt-3 pt-3 flex items-center gap-4 flex-wrap"
+              style={{
+                borderTop: "1px solid rgba(201,150,42,0.35)",
+                fontFamily: "'Cinzel', serif",
+              }}
+            >
+              <span className="flex items-center gap-1.5 text-xs text-[#5a3010]">
+                🎬 <span>Scène {sceneProgressLabel}</span>
+              </span>
+              <span className="text-[#c9962a] text-xs opacity-50">·</span>
+              <span className="flex items-center gap-1.5 text-xs text-[#5a3010]">
+                ⚔️ <span>{totalChoicesPlayed} choix joué{totalChoicesPlayed > 1 ? "s" : ""}</span>
+              </span>
+              <span className="text-[#c9962a] text-xs opacity-50">·</span>
+              <span className="flex items-center gap-1.5 text-xs text-[#5a3010]">
+                📝 <span>{totalNotes} note{totalNotes > 1 ? "s" : ""}</span>
+              </span>
+              <span className="text-[#c9962a] text-xs opacity-50">·</span>
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-[#8a6010]">
+                ⏱ <span>{formatElapsed(sceneElapsed)}</span>
+              </span>
+            </div>
+          )}
         </header>
-        <div
-          className="flex flex-wrap gap-8 px-6 py-4"
-          style={{
-            marginRight: `${rightPanelWidth + 5}px`,
-            transition: "margin 240ms ease",
-          }}
-        >
-          {[...globalNotes].reverse().map((note, index) => {
-            const rotations = [-3, 1.5, -1, 2.5, -2, 1, -1.5, 3];
-            const rotation = rotations[index % rotations.length];
-            const isEditing = editingNoteId === note.id;
 
-            const parchmentStyles = [
-              "radial-gradient(ellipse at 35% 25%, #f2e0a0 0%, #d4a84b 50%, #b07830 100%)",
-              "radial-gradient(ellipse at 40% 30%, #ead898 0%, #c89a40 50%, #a06828 100%)",
-              "radial-gradient(ellipse at 30% 20%, #f8e8b0 0%, #ddb850 50%, #b88035 100%)",
-              "radial-gradient(ellipse at 45% 35%, #e8d090 0%, #c09038 50%, #906020 100%)",
-            ];
-            const bg = parchmentStyles[index % parchmentStyles.length];
+        {/* Barre de progression supprimée ici — déplacée dans le header */}
+        {settings.expertMode && (
+          <div
+            className="flex flex-wrap gap-8 px-6 py-4"
+            style={{
+              marginRight: `${rightPanelWidth + 5}px`,
+              transition: "margin 240ms ease",
+            }}
+          >
+            {[...globalNotes].reverse().map((note, index) => {
+              const rotations = [-3, 1.5, -1, 2.5, -2, 1, -1.5, 3];
+              const rotation = rotations[index % rotations.length];
+              const isEditing = editingNoteId === note.id;
 
-            return (
-              <div
-                key={note.id}
-                className="group relative flex-shrink-0"
-                style={{
-                  width: "118px",
-                  minHeight: "80px",
-                  marginTop: "12px",
-                  transform: isEditing ? "rotate(0deg) scale(1.08)" : `rotate(${rotation}deg)`,
-                  filter: isEditing
-                    ? "drop-shadow(0 12px 24px rgba(0,0,0,0.75)) drop-shadow(0 4px 8px rgba(0,0,0,0.5))"
-                    : "drop-shadow(0 6px 12px rgba(0,0,0,0.6)) drop-shadow(0 2px 4px rgba(0,0,0,0.35))",
-                  transition: "transform 0.2s ease, filter 0.2s ease",
-                  zIndex: isEditing ? 50 : undefined,
-                }}
-                onMouseEnter={(event) => {
-                  if (isEditing) return;
-                  (event.currentTarget as HTMLDivElement).style.transform = "rotate(0deg) scale(1.04)";
-                  (event.currentTarget as HTMLDivElement).style.filter =
-                    "drop-shadow(0 10px 20px rgba(0,0,0,0.7)) drop-shadow(0 4px 8px rgba(0,0,0,0.5))";
-                }}
-                onMouseLeave={(event) => {
-                  if (isEditing) return;
-                  (event.currentTarget as HTMLDivElement).style.transform = `rotate(${rotation}deg)`;
-                  (event.currentTarget as HTMLDivElement).style.filter =
-                    "drop-shadow(0 6px 12px rgba(0,0,0,0.6)) drop-shadow(0 2px 4px rgba(0,0,0,0.35))";
-                }}
-              >
-                {/* Clou */}
-                <div style={{
-                  position: "absolute", top: "-8px", left: "50%",
-                  transform: "translateX(-50%)", width: "16px", height: "16px",
-                  borderRadius: "50%", zIndex: 10,
-                  background: "radial-gradient(circle at 30% 30%, #c0c0c0 0%, #707070 30%, #2a2a2a 60%, #0a0a0a 100%)",
-                  boxShadow: "0 3px 8px rgba(0,0,0,0.9), inset 0 1px 2px rgba(255,255,255,0.35)",
-                }}/>
-                <div style={{
-                  position: "absolute", top: "-6px", left: "50%",
-                  transform: "translateX(-50%)", width: "6px", height: "6px",
-                  borderRadius: "50%", zIndex: 11, pointerEvents: "none",
-                  background: "radial-gradient(circle at 35% 35%, rgba(255,255,255,0.6), transparent)",
-                }}/>
+              const parchmentStyles = [
+                "radial-gradient(ellipse at 35% 25%, #f2e0a0 0%, #d4a84b 50%, #b07830 100%)",
+                "radial-gradient(ellipse at 40% 30%, #ead898 0%, #c89a40 50%, #a06828 100%)",
+                "radial-gradient(ellipse at 30% 20%, #f8e8b0 0%, #ddb850 50%, #b88035 100%)",
+                "radial-gradient(ellipse at 45% 35%, #e8d090 0%, #c09038 50%, #906020 100%)",
+              ];
+              const bg = parchmentStyles[index % parchmentStyles.length];
 
-                {/* Parchemin */}
+              return (
                 <div
+                  key={note.id}
+                  className="group relative flex-shrink-0"
                   style={{
-                    background: bg,
-                    borderRadius: "1px 5px 3px 2px",
-                    padding: "16px 10px 12px",
-                    position: "relative",
-                    minHeight: "76px",
-                    cursor: isEditing ? "default" : "pointer",
-                    boxShadow: `inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -2px 6px rgba(0,0,0,0.2)`,
-                    clipPath: `polygon(0% 4%, 1.5% 0%, 3.5% 2.5%, 6% 0.5%, 94% 0%, 96.5% 2%, 98.5% 0%, 100% 3%, 99% 94%, 100% 98%, 97.5% 100%, 95% 97.5%, 4% 100%, 1.5% 98.5%, 0% 100%)`,
+                    width: "118px",
+                    minHeight: "80px",
+                    marginTop: "12px",
+                    transform: isEditing
+                      ? "rotate(0deg) scale(1.08)"
+                      : `rotate(${rotation}deg)`,
+                    filter: isEditing
+                      ? "drop-shadow(0 12px 24px rgba(0,0,0,0.75)) drop-shadow(0 4px 8px rgba(0,0,0,0.5))"
+                      : "drop-shadow(0 6px 12px rgba(0,0,0,0.6)) drop-shadow(0 2px 4px rgba(0,0,0,0.35))",
+                    transition: "transform 0.2s ease, filter 0.2s ease",
+                    zIndex: isEditing ? 50 : undefined,
                   }}
-                  onClick={() => {
-                    if (!isEditing) {
-                      setEditingNoteId(note.id);
-                      setEditingNoteText(note.text);
-                    }
+                  onMouseEnter={(event) => {
+                    if (isEditing) return;
+                    (event.currentTarget as HTMLDivElement).style.transform =
+                      "rotate(0deg) scale(1.04)";
+                    (event.currentTarget as HTMLDivElement).style.filter =
+                      "drop-shadow(0 10px 20px rgba(0,0,0,0.7)) drop-shadow(0 4px 8px rgba(0,0,0,0.5))";
+                  }}
+                  onMouseLeave={(event) => {
+                    if (isEditing) return;
+                    (event.currentTarget as HTMLDivElement).style.transform = `rotate(${rotation}deg)`;
+                    (event.currentTarget as HTMLDivElement).style.filter =
+                      "drop-shadow(0 6px 12px rgba(0,0,0,0.6)) drop-shadow(0 2px 4px rgba(0,0,0,0.35))";
                   }}
                 >
-                  {/* Texture lignes */}
+                  {/* Clou */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "-8px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      width: "16px",
+                      height: "16px",
+                      borderRadius: "50%",
+                      zIndex: 10,
+                      background:
+                        "radial-gradient(circle at 30% 30%, #c0c0c0 0%, #707070 30%, #2a2a2a 60%, #0a0a0a 100%)",
+                      boxShadow:
+                        "0 3px 8px rgba(0,0,0,0.9), inset 0 1px 2px rgba(255,255,255,0.35)",
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "-6px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      width: "6px",
+                      height: "6px",
+                      borderRadius: "50%",
+                      zIndex: 11,
+                      pointerEvents: "none",
+                      background:
+                        "radial-gradient(circle at 35% 35%, rgba(255,255,255,0.6), transparent)",
+                    }}
+                  />
+
+                  {/* Parchemin */}
+                  <div
+                    style={{
+                      background: bg,
+                      borderRadius: "1px 5px 3px 2px",
+                      padding: "16px 10px 12px",
+                      position: "relative",
+                      minHeight: "76px",
+                      cursor: isEditing ? "default" : "pointer",
+                      boxShadow:
+                        "inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -2px 6px rgba(0,0,0,0.2)",
+                      clipPath:
+                        "polygon(0% 4%, 1.5% 0%, 3.5% 2.5%, 6% 0.5%, 94% 0%, 96.5% 2%, 98.5% 0%, 100% 3%, 99% 94%, 100% 98%, 97.5% 100%, 95% 97.5%, 4% 100%, 1.5% 98.5%, 0% 100%)",
+                    }}
+                    onClick={() => {
+                      if (!isEditing) {
+                        setEditingNoteId(note.id);
+                        setEditingNoteText(note.text);
+                      }
+                    }}
+                  >
+                    {/* Texture lignes */}
                   <div style={{
                     position: "absolute", inset: 0, pointerEvents: "none",
                     background: "repeating-linear-gradient(0deg, transparent, transparent 9px, rgba(101,67,33,0.07) 9px, rgba(101,67,33,0.07) 10px)",
@@ -688,24 +882,26 @@ export function SessionLivePage() {
                     className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center"
                     style={{ width: "14px", height: "14px", fontSize: "8px", background: "rgba(122,26,26,0.8)", color: "#fff", zIndex: 3 }}
                     aria-label="Supprimer"
-                  >✕</button>
+                  >?</button>
                 </div>
               </div>
             );
           })}
         </div>
+        )}
 
         <div
           className="live-layout mx-auto w-full max-w-[1200px] min-w-0 px-6"
           style={{
-            paddingRight: `${rightPanelWidth + 10}px`,
+            paddingRight: settings.expertMode ? `${rightPanelWidth + 10}px` : "1.5rem",
             transition: "margin 240ms ease",
           }}
         >
-          <div
-            ref={scenePanelRef}
-            className="scene-panel card card-muted flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden transition-all duration-300 ease-in-out"
-          >
+        <div
+          ref={scenePanelRef}
+          data-tutorial="scene-panel"
+          className="scene-panel card card-muted flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden transition-all duration-300 ease-in-out"
+        >
             <div
               className="grimoire-container flex min-h-0 flex-col"
                 style={{
@@ -752,9 +948,9 @@ export function SessionLivePage() {
                         setQuickPlaceId(selectedPlace.id);
                         setPanelMode("place");
                       }}
-                      className="text-sm live-muted cursor-pointer text-left hover:underline"
-                      aria-label={`Ouvrir le lieu ${selectedPlace.name}`}
-                    >
+                    className="text-sm live-muted cursor-pointer text-left hover:underline"
+                    aria-label={`Ouvrir le lieu ${selectedPlace.name}`}
+                  >
                       📍 {selectedPlace.name}
                       {selectedPlace.region ? ` — ${selectedPlace.region}` : ""}
                     </button>
@@ -763,7 +959,7 @@ export function SessionLivePage() {
               </div>
 
               <div className="mt-6 flex min-h-0 flex-col space-y-6 overflow-y-auto pr-1">
-                <section className="section-card p-5">
+                <section className="section-card p-5" data-tutorial="scene-text">
                   <p className="field-label mb-1">
                     Texte de scène
                   </p>
@@ -775,7 +971,10 @@ export function SessionLivePage() {
                   </div>
                 </section>
 
-                <section className="section-card p-4 relative">
+                <section
+                  className="section-card p-4 relative"
+                  data-tutorial="choices-panel"
+                >
                   <p className="field-label mb-1">
                     Choix
                   </p>
@@ -825,16 +1024,26 @@ export function SessionLivePage() {
                                 isLocked ? "opacity-50 cursor-not-allowed pointer-events-none" : ""
                               }`}
                               onClick={() => {
-                                if (choice.targetType === "place") {
-                                  setQuickNpcId(null);
-                                  setQuickItemId(null);
-                                  setQuickPlaceId(choice.targetId);
-                                  setPanelMode("place");
-                                } else if (choice.targetType === "npc") {
-                                  setQuickPlaceId(null);
-                                  setQuickItemId(null);
-                                  setQuickNpcId(choice.targetId);
-                                  setPanelMode("npc");
+                                if (!settings.expertMode) {
+                                  // Mode guidé : drawer contextuel
+                                  setActiveChoiceDrawer({
+                                    label: choice.label,
+                                    targetType: choice.targetType ?? null,
+                                    targetId: choice.targetId ?? null,
+                                  });
+                                } else {
+                                  // Mode expert : panneau latéral
+                                  if (choice.targetType === "place") {
+                                    setQuickNpcId(null);
+                                    setQuickItemId(null);
+                                    setQuickPlaceId(choice.targetId);
+                                    setPanelMode("place");
+                                  } else if (choice.targetType === "npc") {
+                                    setQuickPlaceId(null);
+                                    setQuickItemId(null);
+                                    setQuickNpcId(choice.targetId);
+                                    setPanelMode("npc");
+                                  }
                                 }
                                 if (selectedScene) {
                                   setUsedChoiceIds((prev) => {
@@ -848,7 +1057,7 @@ export function SessionLivePage() {
                                   });
                                 }
                               }}
-                            >
+                          >
                               <span className="absolute inset-0 rounded-xl opacity-[0.25] mix-blend-multiply [background-image:repeating-linear-gradient(45deg,rgba(120,74,32,0.06)_0px,rgba(120,74,32,0.06)_1px,transparent_1px,transparent_6px)]" />
                               {isLocked && (
                                 <span className="absolute left-3 top-3" aria-hidden="true">
@@ -869,12 +1078,14 @@ export function SessionLivePage() {
                                 </span>
                               )}
                               <span className="relative flex w-full flex-col items-center justify-center gap-3">
-                                <ChoiceIcon
-                                  intent={choice.intent}
-                                  size={22}
-                                  strokeWidth={1.5}
-                                  className={isLocked ? "text-stone-600" : "text-stone-700"}
-                                />
+                                {settings.expertMode && (
+                                  <ChoiceIcon
+                                    intent={choice.intent}
+                                    size={22}
+                                    strokeWidth={1.5}
+                                    className={isLocked ? "text-stone-600" : "text-stone-700"}
+                                  />
+                                )}
                                 <span className="text-sm font-medium text-stone-800 text-center">
                                   {choice.label}
                                 </span>
@@ -883,13 +1094,13 @@ export function SessionLivePage() {
                                     className="absolute right-3 top-3 text-xs text-stone-600"
                                     aria-hidden="true"
                                   >
-                                    ➜
+                                    ?
                                   </span>
                                 )}
                               </span>
                               {isTaken && (
                                 <span className="absolute bottom-2 right-2 text-[10px] font-semibold text-stone-500">
-                                  ✓
+                                  ?
                                 </span>
                               )}
                             </button>
@@ -905,39 +1116,209 @@ export function SessionLivePage() {
                     );
                   })()}
 
-                  {settings.improvisationEnabled && (
+                  {settings.expertMode && settings.improvisationEnabled && (
                     <button
+                      data-tutorial="improvisation-btn"
                       className="mt-6 w-full btn-gold-medieval py-3 text-base"
-                      onClick={() => setShowImprovisation(true)}
+                      onClick={() => {
+                        setShowImprovisation(true);
+                        window.dispatchEvent(new CustomEvent("tutorial:improvisation-opened"));
+                      }}
                       type="button"
                     >
                       🎲 Situation imprévue
                     </button>
                   )}
+
+                  {/* 🎓 Drawer aide contextuelle choix — mode guidé */}
+                  {!settings.expertMode && activeChoiceDrawer && (() => {
+                    const linkedNpc = activeChoiceDrawer.targetType === "npc" && activeChoiceDrawer.targetId
+                      ? data.npcs.find((n) => n.id === activeChoiceDrawer.targetId)
+                      : null;
+                    const linkedPlace = activeChoiceDrawer.targetType === "place" && activeChoiceDrawer.targetId
+                      ? places.find((p) => p.id === activeChoiceDrawer.targetId)
+                      : null;
+                    // Trouver la scène de cette session liée à ce lieu
+                    const linkedScene = linkedPlace
+                      ? scenes.find((sc) => sc.placeId === linkedPlace.id && sc.id !== selectedSceneId)
+                      : null;
+                    return (
+                      <div
+                        className="mt-4 rounded-xl border-2 p-4"
+                        style={{
+                          borderColor: "#c9962a",
+                          background: "linear-gradient(160deg, #fdf6e3, #f5e6c0)",
+                          boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                          fontFamily: "'Cinzel', serif",
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#8a6010" }}>
+                            ✅ Choix joué
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setActiveChoiceDrawer(null)}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "#8a6010", fontSize: "0.9rem", padding: 0 }}
+                          >✕</button>
+                        </div>
+                        <p className="text-sm font-semibold text-[#2c1a06] mb-3">
+                          « {activeChoiceDrawer.label} »
+                        </p>
+                        {linkedNpc && (
+                          <div className="rounded-lg border border-[#c9962a]/40 bg-white/60 p-3 mb-2">
+                            <p className="text-xs font-semibold text-[#5a3010]">🎭 {linkedNpc.name}</p>
+                            {linkedNpc.role && <p className="text-xs text-stone-600 mt-0.5">{linkedNpc.role}</p>}
+                            {linkedNpc.description && (
+                              <p className="mt-1 text-xs text-stone-700 italic line-clamp-3">{linkedNpc.description}</p>
+                            )}
+                          </div>
+                        )}
+                        {linkedPlace && (
+                          <div className="rounded-lg border border-[#c9962a]/40 bg-white/60 p-3 mb-2">
+                            <p className="text-xs font-semibold text-[#5a3010]">📍 {linkedPlace.name}</p>
+                            {linkedPlace.region && <p className="text-xs text-stone-600 mt-0.5">{linkedPlace.region}</p>}
+                            {linkedPlace.description && (
+                              <p className="mt-1 text-xs text-stone-700 italic line-clamp-3">{linkedPlace.description}</p>
+                            )}
+                            {/* Bouton navigation vers la scène liée */}
+                            {linkedScene && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedSceneId(linkedScene.id);
+                                  setActiveChoiceDrawer(null);
+                                }}
+                                className="mt-3 w-full rounded-lg border-2 border-[#c9962a] px-4 py-2.5 text-sm font-semibold text-[#5a3010] hover:bg-[#ead59a] transition-colors flex items-center justify-center gap-2"
+                                style={{ fontFamily: "'Cinzel', serif" }}
+                              >
+                                ➡️ Aller à la scène : {linkedScene.title?.trim() || "Scène sans titre"}
+                              </button>
+                            )}
+                            {!linkedScene && (
+                              <p className="mt-2 text-xs text-stone-500 italic">
+                                Aucune scène de cette session n'est liée à ce lieu.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        <p className="text-xs text-stone-500 italic mt-2" style={{ fontFamily: "'Crimson Text', serif" }}>
+                          💡 {linkedNpc
+                            ? `Présente ${linkedNpc.name} à tes joueurs et joue sa réaction.`
+                            : linkedPlace
+                              ? `Décris l'arrivée de tes joueurs à ${linkedPlace.name}.`
+                              : "Continue l'histoire selon la décision de tes joueurs."}
+                        </p>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 🎓 Bandeau action recommandée — mode débutant uniquement */}
+                  {!settings.expertMode && (
+                    <div
+                      className="mt-4 rounded-lg border-2 p-4"
+                      style={{
+                        borderColor: "#c9962a",
+                        background: "rgba(201,150,42,0.08)",
+                        fontFamily: "'Cinzel', serif",
+                      }}
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8a6010" }}>
+                        👉 Action recommandée
+                      </p>
+                      {(selectedScene?.choices?.length ?? 0) === 0 ? (
+                        <>
+                          <p className="text-sm font-medium text-[#5a3010]">
+                            Tes joueurs n'ont pas encore d'options à choisir.
+                          </p>
+                          <p className="text-xs text-stone-600 mt-1">
+                            Les choix se créent depuis la page de détail de la session, avant de lancer la partie.
+                          </p>
+                          <Link
+                            to={`/sessions/${sessionId}`}
+                            className="mt-3 inline-block rounded-md border border-[#c9962a] px-4 py-2 text-xs font-semibold text-[#5a3010] hover:bg-[#ead59a] transition-colors"
+                          >
+                            ✏️ Préparer les choix
+                          </Link>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm font-medium text-[#5a3010]">
+                            Présente les choix à tes joueurs et clique sur celui qu'ils choisissent.
+                          </p>
+                          <p className="text-xs text-stone-600 mt-1">
+                            Les choix permettent de guider l'histoire et d'ouvrir des lieux ou PNJ associés.
+                          </p>
+                        </>
+                      )}
+                      {/* Bouton carte temporaire */}
+                      {!showMapBeginner && (
+                        <button
+                          type="button"
+                          onClick={() => setShowMapBeginner(true)}
+                          className="mt-3 flex items-center gap-2 text-xs text-stone-600 hover:text-[#5a3010] transition-colors"
+                        >
+                          <Map size={14} />
+                          Afficher la carte des scènes
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </section>
 
+
                 <div className="grid gap-6 lg:grid-cols-2" style={{ overflow: 'visible' }}>
-                  <section
-                    className="section-card p-4 relative"
-                    style={{
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.06)",
-                      background: "linear-gradient(160deg, #fdf6e3, #f5e6c0)",
-                    }}
-                  >
-                    <p className="field-label mb-2" style={{ color: "#c9962a", fontFamily: "'Uncial Antiqua', serif" }}>🗺️ Carte des scènes</p>
-                    <SceneMap
-                      scenes={scenes}
-                      selectedSceneId={selectedSceneId}
-                      sessionId={sessionId ?? ""}
-                      onSelectScene={(sceneId) => setSelectedSceneId(sceneId)}
-                      onUpdateScenePicto={(sceneId, picto) => {
-                        updateScene(sessionId ?? "", sceneId, { picto });
+                  {/* Carte — visible en expert, ou temporairement en débutant */}
+                  {(settings.expertMode || showMapBeginner) ? (
+                    <section
+                      data-tutorial="map-toggle"
+                      className="section-card p-4 relative"
+                      style={{
+                        boxShadow:
+                          "0 2px 8px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.06)",
+                        background: "linear-gradient(160deg, #fdf6e3, #f5e6c0)",
                       }}
-                    />
-                  </section>
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <p
+                          className="field-label flex items-center gap-2"
+                          style={{
+                            color: "#c9962a",
+                            fontFamily: "'Uncial Antiqua', serif",
+                          }}
+                        >
+                          <Map size={18} />
+                          Carte des scènes
+                        </p>
+                        {!settings.expertMode && (
+                          <button
+                            type="button"
+                            onClick={() => setShowMapBeginner(false)}
+                            className="text-xs text-stone-500 hover:text-stone-700"
+                            style={{ fontFamily: "'Cinzel', serif" }}
+                          >
+                            ✕ Masquer
+                          </button>
+                        )}
+                      </div>
+                      <SceneMap
+                        scenes={scenes}
+                        selectedSceneId={selectedSceneId}
+                        sessionId={sessionId ?? ""}
+                        onSelectScene={(sceneId) => {
+                          setSelectedSceneId(sceneId);
+                          window.dispatchEvent(new CustomEvent("tutorial:map-opened"));
+                        }}
+                        onUpdateScenePicto={(sceneId, picto) => {
+                          updateScene(sessionId ?? "", sceneId, { picto });
+                        }}
+                      />
+                    </section>
+                  ) : null}
 
                   <section
                     className="section-card p-4 relative"
+                    data-tutorial="notes-panel"
                     style={{
                       boxShadow:
                         "0 4px 16px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.2)",
@@ -1029,7 +1410,10 @@ export function SessionLivePage() {
                             color: noteScope === "scene" ? "#fff" : "#5a3010",
                           }}
                         >
-                          📜 Scène
+                          <span className="inline-flex items-center gap-1">
+                            <BookOpen size={14} />
+                            Scène
+                          </span>
                         </button>
                         <button
                           type="button"
@@ -1044,7 +1428,10 @@ export function SessionLivePage() {
                               noteScope === "campaign" ? "#fff" : "#5a3010",
                           }}
                         >
-                          🗺️ Campagne
+                          <span className="inline-flex items-center gap-1">
+                            <Map size={14} />
+                            Campagne
+                          </span>
                         </button>
                       </div>
 
@@ -1077,8 +1464,12 @@ export function SessionLivePage() {
                       <div className="flex gap-2">
                         <input
                           ref={noteScope === "scene" ? noteInputRef : undefined}
+                          data-tutorial="note-input"
                           value={noteText}
                           onChange={(event) => setNoteText(event.target.value)}
+                          onFocus={() => {
+                            window.dispatchEvent(new CustomEvent("tutorial:note-focused"));
+                          }}
                           onKeyDown={(event) => {
                             if (event.key === "Enter" && noteText.trim()) {
                               if (noteScope === "campaign") {
@@ -1098,19 +1489,24 @@ export function SessionLivePage() {
                         />
                         <button
                           type="button"
+                          data-tutorial="add-note-btn"
                           onClick={() => {
                             if (!noteText.trim()) return;
+                            
                             if (noteScope === "campaign") {
                               addGlobalNote(noteText.trim());
                               setNoteText("");
                             } else {
                               handleAddNote();
                             }
+                            
+                            // 🎉 Déclencher l'événement tutorial
+                            window.dispatchEvent(new CustomEvent("tutorial:note-added"));
                           }}
                           disabled={!noteText.trim()}
                           className="btn-gold-medieval flex-shrink-0 px-4 py-2 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                          +
+                          + Note
                         </button>
                       </div>
                     </div>
@@ -1123,6 +1519,7 @@ export function SessionLivePage() {
           </div>
         </div>
 
+        {settings.expertMode && (
         <div
           className="panel-wood fixed right-0 top-0 z-40 h-screen flex flex-col p-2 gap-1"
           style={{
@@ -1223,6 +1620,8 @@ export function SessionLivePage() {
                 </div>
               </div>
             </div>
+            {settings.expertMode && (
+              <>
             <div className="menu-section">
               <button
                 type="button"
@@ -1474,7 +1873,7 @@ export function SessionLivePage() {
                             }
                             className="btn btn-subtle px-2 text-xs"
                           >
-                            −
+                            -
                           </button>
                           <input
                             type="number"
@@ -1548,12 +1947,12 @@ export function SessionLivePage() {
                           <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/70 font-cinzel">
                             États
                           </p>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {[
-                              "☠️",
-                              "🩸",
-                              "😵",
-                              "💤",
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {[
+                              "Fatigué",
+                              "Blessé",
+                              "Stressé",
+                              "Poisonné",
                             ].map((condition) => {
                               const active = selectedPc.conditions.includes(condition);
                               return (
@@ -1605,9 +2004,13 @@ export function SessionLivePage() {
             <div className="menu-section">
               <button
                 type="button"
-                onClick={() =>
-                  setRightPanelTab((prev) => (prev === "npcs" ? null : "npcs"))
-                }
+                data-tutorial="tab-npcs"
+                onClick={() => {
+                  setRightPanelTab((prev) => (prev === "npcs" ? null : "npcs"));
+                  if (rightPanelTab !== "npcs") {
+                    window.dispatchEvent(new CustomEvent("tutorial:npcs-tab-opened"));
+                  }
+                }}
                 aria-expanded={rightPanelTab === "npcs"}
                 aria-controls="right-panel-npcs"
                 className={`menu-toggle relative w-full rounded-md border px-2 py-2 text-xs font-medium shadow-sm transition ${
@@ -1663,29 +2066,50 @@ export function SessionLivePage() {
               >
                 <span className="pointer-events-none absolute left-0 top-0 h-full w-2 bg-stone-500/10" />
                 <div className="space-y-2 overflow-y-auto py-2">
-                  {sessionNpcs.list.map((npc) => (
-                    <button
-                      key={npc.id}
-                      type="button"
-                      onClick={() => {
-                        setQuickPlaceId(null);
-                        setQuickItemId(null);
-                        setQuickNpcId(npc.id);
-                        setPanelMode("npc");
-                      }}
-                      className="w-full rounded-md border border-stone-300 bg-white/90 px-2 py-2 text-left text-sm hover:bg-stone-100"
-                    >
-                      <div className="font-medium">
-                        {npc.name || "PNJ sans nom"}
+                  {sessionNpcs.list.map((npc) => {
+                    const status = npcStatus[npc.id] ?? "active";
+                    return (
+                      <div key={npc.id} className="rounded-md border border-stone-300 bg-white/90">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuickPlaceId(null);
+                            setQuickItemId(null);
+                            setQuickNpcId(npc.id);
+                            setPanelMode("npc");
+                          }}
+                          className="w-full px-2 py-2 text-left text-sm hover:bg-stone-100"
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className={`font-medium ${status === "out" ? "line-through opacity-50" : ""}`}>
+                              {npc.name || "PNJ sans nom"}
+                            </span>
+                            <span className="text-base">
+                              {status === "active" ? "🟢" : status === "out" ? "💀" : "👁"}
+                            </span>
+                          </div>
+                          <div className="text-xs text-stone-600">
+                            {npc.role || (sessionNpcs.hasFallback ? "Hors session" : "Aucun rôle")}
+                          </div>
+                        </button>
+                        <div className="flex border-t border-stone-200">
+                          {(["active", "out", "observer"] as const).map((s) => (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => setNpcStatus((prev) => ({ ...prev, [npc.id]: s }))}
+                              className={`flex-1 py-1 text-xs transition-colors ${
+                                status === s ? "bg-amber-100 text-amber-800 font-semibold" : "text-stone-400 hover:bg-stone-50"
+                              }`}
+                              title={s === "active" ? "En jeu" : s === "out" ? "Hors jeu" : "Observateur"}
+                            >
+                              {s === "active" ? "🟢" : s === "out" ? "💀" : "👁"}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                      <div className="text-xs text-stone-600">
-                        {npc.role ||
-                          (sessionNpcs.hasFallback
-                            ? "Hors session"
-                            : "Aucun rôle")}
-                      </div>
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -1877,8 +2301,11 @@ export function SessionLivePage() {
                 </div>
               </div>
             </div>
+              </>
+            )}
           </div>
         </div>
+        )} {/* fin {settings.expertMode && ( panneau droit */}
         <>
           <div
             className="fixed top-0 left-0 right-0 bottom-0 z-40 bg-black/25 backdrop-blur-sm transition-opacity duration-300 motion-reduce:transition-none"
@@ -1924,7 +2351,7 @@ export function SessionLivePage() {
                           className="btn btn-subtle text-sm"
                           aria-label="Retour à la recherche"
                         >
-                          ←
+                          ?
                         </button>
                       )}
                     </div>
@@ -1949,7 +2376,7 @@ export function SessionLivePage() {
                         className="btn btn-subtle"
                         aria-label="Fermer la vue rapide"
                       >
-                        ✕
+                        ?
                       </button>
                     </div>
                   </div>

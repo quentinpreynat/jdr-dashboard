@@ -23,7 +23,7 @@ html, body, #root {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  font-family: var(--font-body);
+  font-family: var(--font-body), "Segoe UI Emoji", "Noto Color Emoji", serif;
 }
 
 @keyframes flicker {
@@ -438,4 +438,80 @@ a:hover {
 .btn-outline-medieval,
 .btn-danger-medieval {
   transition: all 0.2s ease;
+}
+
+/* ========================================
+   🎨 STYLES TUTORIEL INTERACTIF
+   ======================================== */
+
+@keyframes tutorial-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.02); }
+}
+
+@keyframes tutorial-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes tutorial-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes tutorial-toast-slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes tutorial-toast-slide-out {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+.tutorial-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10001;
+  padding: 12px 20px;
+  background: linear-gradient(160deg, #fdf6e3, #f5e6c0);
+  border: 2px solid #c9962a;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  font-family: 'Cinzel', serif;
+  animation: tutorial-toast-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tutorial-toast.hiding {
+  animation: tutorial-toast-slide-out 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tutorial-spin {
+  to { transform: rotate(360deg); }
+}
+
+.tutorial-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(201, 150, 42, 0.3);
+  border-top-color: #c9962a;
+  border-radius: 50%;
+  animation: tutorial-spin 0.8s linear infinite;
+}
+
+@media (max-width: 768px) {
+  .tutorial-toast {
+    right: 10px;
+    left: 10px;
+    top: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-toast {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -4,7 +4,7 @@ import { useSettings } from "../state/SettingsContext";
 
 export function SettingsPage() {
   const { data, resetDemoData, replaceData } = useAppData();
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSettings, resetTutorial } = useSettings();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [isDimMode, setIsDimMode] = useState<boolean>(false);
@@ -149,6 +149,20 @@ export function SettingsPage() {
           />
           Activer les situations imprévues
         </label>
+      </div>
+
+      <div className="section-card">
+        <h3 className="section-card-title">Guidage débutant</h3>
+        <p className="mb-3 mt-1 text-sm text-amber-950/80">
+          Relance le tutoriel pas à pas pour les nouveaux maîtres du jeu.
+        </p>
+        <button
+          type="button"
+          onClick={() => resetTutorial()}
+          className="btn-outline-medieval"
+        >
+          Relancer le tutoriel
+        </button>
       </div>
 
       <div className="section-card">

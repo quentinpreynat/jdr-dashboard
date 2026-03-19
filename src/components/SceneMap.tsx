@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSceneMapLayout, CELL_SIZE, CELL_GAP } from "../hooks/useSceneMapLayout";
 
 interface Scene {
@@ -173,6 +173,105 @@ export function SceneMap({ scenes, selectedSceneId, sessionId, onSelectScene, on
     try { localStorage.removeItem(storageKey); } catch {}
   }
 
+  // Générateur pseudo-aléatoire déterministe basé sur sessionId
+  function seededRand(seed: string, index: number): number {
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+    h = (Math.imul(h, index + 1) ^ (h >>> 16)) | 0;
+    return Math.abs(h % 1000) / 1000;
+  }
+
+  // Icône SVG dessinée selon le picto
+  function renderPictoIcon(picto: string, cx: number, cy: number, s: number) {
+    const h = s / 2;
+    switch (picto) {
+      case "🏰": return (
+        <g fill={getCellColor(picto).bg} stroke="rgba(0,0,0,0.4)" strokeWidth="0.6">
+          <rect x={cx-h*0.5} y={cy-h*0.1} width={h} height={h*0.9}/>
+          <rect x={cx-h*0.55} y={cy-h*0.35} width={h*0.28} height={h*0.3}/>
+          <rect x={cx-h*0.22} y={cy-h*0.35} width={h*0.28} height={h*0.3}/>
+          <rect x={cx+h*0.1} y={cy-h*0.35} width={h*0.28} height={h*0.3}/>
+          <rect x={cx-h*0.18} y={cy+h*0.3} width={h*0.36} height={h*0.5} fill="rgba(20,10,0,0.6)" stroke="none"/>
+        </g>
+      );
+      case "🏘️": return (
+        <g fill={getCellColor(picto).bg} stroke="rgba(0,0,0,0.4)" strokeWidth="0.6">
+          <rect x={cx-h*0.5} y={cy} width={h*0.5} height={h*0.7}/>
+          <polygon points={`${cx-h*0.55},${cy} ${cx-h*0.25},${cy-h*0.55} ${cx+h*0.05},${cy}`} fill="#8b3020"/>
+          <rect x={cx+h*0.05} y={cy+h*0.1} width={h*0.45} height={h*0.6}/>
+          <polygon points={`${cx},${cy+h*0.1} ${cx+h*0.27},${cy-h*0.38} ${cx+h*0.54},${cy+h*0.1}`} fill="#7a2818"/>
+        </g>
+      );
+      case "🍺": return (
+        <g fill={getCellColor(picto).bg} stroke="rgba(0,0,0,0.4)" strokeWidth="0.6">
+          <rect x={cx-h*0.45} y={cy-h*0.3} width={h*0.9} height={h*1.1} rx="2"/>
+          <polygon points={`${cx-h*0.5},${cy-h*0.3} ${cx},${cy-h*0.85} ${cx+h*0.5},${cy-h*0.3}`} fill="#7a2818"/>
+          <rect x={cx-h*0.15} y={cy+h*0.2} width={h*0.3} height={h*0.4} fill="rgba(20,10,0,0.5)" stroke="none"/>
+          <line x1={cx-h*0.55} y1={cy-h*0.08} x2={cx-h*0.8} y2={cy+h*0.1} stroke="#7a5828" strokeWidth="1.5" fill="none"/>
+        </g>
+      );
+      case "🌲": return (
+        <g>
+          <circle cx={cx} cy={cy-h*0.1} r={h*0.52} fill="#4a7a30" stroke="rgba(0,0,0,0.35)" strokeWidth="0.6"/>
+          <circle cx={cx-h*0.2} cy={cy+h*0.15} r={h*0.38} fill="#3a6820" stroke="rgba(0,0,0,0.3)" strokeWidth="0.5"/>
+          <circle cx={cx+h*0.2} cy={cy+h*0.15} r={h*0.38} fill="#3a6820" stroke="rgba(0,0,0,0.3)" strokeWidth="0.5"/>
+          <rect x={cx-h*0.1} y={cy+h*0.4} width={h*0.2} height={h*0.35} fill="#6a4020" stroke="rgba(0,0,0,0.4)" strokeWidth="0.5"/>
+        </g>
+      );
+      case "⛰️": return (
+        <g fill={getCellColor(picto).bg} stroke="rgba(0,0,0,0.4)" strokeWidth="0.6">
+          <polygon points={`${cx-h*0.55},${cy+h*0.5} ${cx},${cy-h*0.55} ${cx+h*0.55},${cy+h*0.5}`}/>
+          <polygon points={`${cx-h*0.1},${cy-h*0.55} ${cx+h*0.35},${cy+h*0.1} ${cx+h*0.55},${cy+h*0.5} ${cx-h*0.4},${cy+h*0.5}`} fill="#a09888"/>
+          <polygon points={`${cx-h*0.12},${cy-h*0.55} ${cx},${cy-h*0.3} ${cx+h*0.12},${cy-h*0.55}`} fill="#e8e0d0"/>
+        </g>
+      );
+      case "🌊": return (
+        <g fill="none" stroke="#4a90c0" strokeWidth="1.5" strokeLinecap="round">
+          <path d={`M${cx-h*0.5},${cy-h*0.1} Q${cx-h*0.2},${cy-h*0.4} ${cx},${cy-h*0.1} Q${cx+h*0.2},${cy+h*0.2} ${cx+h*0.5},${cy-h*0.1}`}/>
+          <path d={`M${cx-h*0.5},${cy+h*0.2} Q${cx-h*0.2},${cy-h*0.1} ${cx},${cy+h*0.2} Q${cx+h*0.2},${cy+h*0.5} ${cx+h*0.5},${cy+h*0.2}`}/>
+        </g>
+      );
+      case "⛪": return (
+        <g fill={getCellColor(picto).bg} stroke="rgba(0,0,0,0.4)" strokeWidth="0.6">
+          <rect x={cx-h*0.42} y={cy-h*0.05} width={h*0.84} height={h*0.75}/>
+          <polygon points={`${cx-h*0.45},${cy-h*0.05} ${cx},${cy-h*0.65} ${cx+h*0.45},${cy-h*0.05}`} fill="#8888c0"/>
+          <line x1={cx} y1={cy-h*0.9} x2={cx} y2={cy-h*0.65} stroke="#666" strokeWidth="1.5"/>
+          <line x1={cx-h*0.12} y1={cy-h*0.8} x2={cx+h*0.12} y2={cy-h*0.8} stroke="#666" strokeWidth="1"/>
+          <rect x={cx-h*0.15} y={cy+h*0.1} width={h*0.3} height={h*0.4} fill="rgba(20,10,0,0.5)" stroke="none"/>
+        </g>
+      );
+      case "⚓": return (
+        <g fill="none" stroke={getCellColor(picto).bg} strokeWidth="1.5" strokeLinecap="round">
+          <circle cx={cx} cy={cy-h*0.25} r={h*0.22} fill="none"/>
+          <line x1={cx} y1={cy-h*0.03} x2={cx} y2={cy+h*0.5}/>
+          <path d={`M${cx-h*0.4},${cy+h*0.28} Q${cx-h*0.45},${cy+h*0.5} ${cx},${cy+h*0.5} Q${cx+h*0.45},${cy+h*0.5} ${cx+h*0.4},${cy+h*0.28}`}/>
+          <line x1={cx-h*0.35} y1={cy-h*0.25} x2={cx+h*0.35} y2={cy-h*0.25} stroke={getCellColor(picto).bg}/>
+        </g>
+      );
+      case "⚔️": return (
+        <g stroke="rgba(0,0,0,0.5)" strokeWidth="0.5">
+          <line x1={cx-h*0.45} y1={cy-h*0.45} x2={cx+h*0.45} y2={cy+h*0.45} stroke="#a04040" strokeWidth="2" strokeLinecap="round"/>
+          <line x1={cx+h*0.45} y1={cy-h*0.45} x2={cx-h*0.45} y2={cy+h*0.45} stroke="#a04040" strokeWidth="2" strokeLinecap="round"/>
+          <rect x={cx-h*0.35} y={cy-h*0.08} width={h*0.7} height={h*0.16} rx="2" fill="#888" transform={`rotate(45,${cx},${cy})`}/>
+          <rect x={cx-h*0.35} y={cy-h*0.08} width={h*0.7} height={h*0.16} rx="2" fill="#888" transform={`rotate(-45,${cx},${cy})`}/>
+        </g>
+      );
+      case "🕳️": return (
+        <g>
+          <ellipse cx={cx} cy={cy+h*0.1} rx={h*0.5} ry={h*0.3} fill="#2a1a0a" stroke="#5a3a18" strokeWidth="0.8"/>
+          <ellipse cx={cx} cy={cy+h*0.05} rx={h*0.38} ry={h*0.2} fill="#1a0a00"/>
+          <path d={`M${cx-h*0.5},${cy+h*0.1} Q${cx-h*0.25},${cy-h*0.5} ${cx},${cy-h*0.3} Q${cx+h*0.25},${cy-h*0.5} ${cx+h*0.5},${cy+h*0.1}`} fill="#504030" stroke="#6a4828" strokeWidth="0.7"/>
+        </g>
+      );
+      default: return (
+        <g>
+          <circle cx={cx} cy={cy} r={h*0.45} fill={getCellColor(picto).bg} stroke="rgba(0,0,0,0.35)" strokeWidth="0.7"/>
+          <text x={cx} y={cy+h*0.18} textAnchor="middle" fontSize={h*0.75} style={{userSelect:"none"}}>{picto}</text>
+        </g>
+      );
+    }
+  }
+
   // FIX décalage : PADDING = 8, les cases s'alignent exactement sur la grille
   const PADDING = 8;
   const step = CELL_SIZE + CELL_GAP;
@@ -231,32 +330,28 @@ export function SceneMap({ scenes, selectedSceneId, sessionId, onSelectScene, on
       {/* SVG carte */}
       <div ref={containerRef} style={{
         overflowX: "auto", overflowY: "auto", maxHeight: "320px",
-        borderRadius: "6px",
-        border: "3px solid #6b4c1e",
-        boxShadow: "inset 0 0 30px rgba(80,40,0,0.25), 0 4px 16px rgba(0,0,0,0.4)",
-        background: "#c8a96e",
+        borderRadius: "4px",
+        border: "2px solid rgba(100,65,20,0.5)",
+        boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+        background: "#e8d09a",
       }}>
         <svg width={svgW} height={svgH} style={{ display: "block" }}>
           <defs>
-            {/* Texture grain parchemin */}
             <filter id="grain" x="0%" y="0%" width="100%" height="100%">
               <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" stitchTiles="stitch" result="noise"/>
               <feColorMatrix type="saturate" values="0" in="noise" result="gray"/>
               <feBlend in="SourceGraphic" in2="gray" mode="multiply" result="blend"/>
               <feComposite in="blend" in2="SourceGraphic" operator="in"/>
             </filter>
-            {/* Roughen pour ombres routes */}
             <filter id="roughen" x="-5%" y="-5%" width="110%" height="110%">
               <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise"/>
               <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.5" xChannelSelector="R" yChannelSelector="G"/>
             </filter>
-            {/* Vignette coins */}
             <radialGradient id="vignette" cx="50%" cy="50%" r="60%">
               <stop offset="0%" stopColor="transparent"/>
               <stop offset="80%" stopColor="transparent"/>
-              <stop offset="100%" stopColor="rgba(40,18,0,0.55)"/>
+              <stop offset="100%" stopColor="rgba(40,18,0,0.6)"/>
             </radialGradient>
-            {/* Brume bords */}
             <radialGradient id="mistL" cx="0%" cy="50%" r="50%">
               <stop offset="0%" stopColor="rgba(232,213,160,0.65)"/>
               <stop offset="100%" stopColor="transparent"/>
@@ -273,7 +368,6 @@ export function SceneMap({ scenes, selectedSceneId, sessionId, onSelectScene, on
               <stop offset="0%" stopColor="rgba(232,213,160,0.6)"/>
               <stop offset="100%" stopColor="transparent"/>
             </radialGradient>
-            {/* Grille légère style papier ancien */}
             <pattern id="mapGrid" patternUnits="userSpaceOnUse" width={step} height={step} x={PADDING} y={PADDING}>
               <rect width={step} height={step} fill="transparent"/>
               <line x1={step} y1="0" x2={step} y2={step} stroke="rgba(100,65,20,0.18)" strokeWidth="0.5"/>
@@ -281,48 +375,131 @@ export function SceneMap({ scenes, selectedSceneId, sessionId, onSelectScene, on
             </pattern>
           </defs>
 
-          {/* Fond parchemin principal */}
+          {/* Fond parchemin */}
           <rect width={svgW} height={svgH} fill="#e8d09a"/>
           <rect width={svgW} height={svgH} fill="#dfc48a" opacity="0.35"/>
-          {/* Grille légère */}
           <rect width={svgW} height={svgH} fill="url(#mapGrid)"/>
-          {/* Grain parchemin */}
           <rect width={svgW} height={svgH} fill="#c8a96e" filter="url(#grain)" opacity="0.12"/>
-
-          {/* Micro-texture lignes horizontales papier ancien */}
           {Array.from({ length: Math.ceil(svgH / 30) }).map((_, i) => (
-            <line key={`hline-${i}`} x1="0" y1={i * 30} x2={svgW} y2={i * 30}
-              stroke="rgba(90,50,0,0.06)" strokeWidth="0.4"/>
+            <line key={`hline-${i}`} x1="0" y1={i * 30} x2={svgW} y2={i * 30} stroke="rgba(90,50,0,0.06)" strokeWidth="0.4"/>
           ))}
 
-          {/* Décors cartographiques — montagnes schématiques coins */}
-          <g opacity="0.13" fill="none" stroke="#5a3200" strokeWidth="1" style={{pointerEvents:"none"}}>
-            <path d={`M8 ${svgH - 40} L22 ${svgH - 62} L36 ${svgH - 40}`}/>
-            <path d={`M22 ${svgH - 40} L38 ${svgH - 68} L54 ${svgH - 40}`}/>
-            <path d={`M${svgW - 54} 14 L${svgW - 38} 0 L${svgW - 22} 14`}/>
-            <path d={`M${svgW - 40} 14 L${svgW - 24} -2 L${svgW - 8} 14`}/>
-            <path d={`M8 40 L20 22 L32 40`}/>
-          </g>
+          {/* Cadre décoratif double bordure */}
+          <rect x="3" y="3" width={svgW-6} height={svgH-6} rx="2" fill="none" stroke="rgba(100,65,20,0.55)" strokeWidth="2" style={{pointerEvents:"none"}}/>
+          <rect x="6" y="6" width={svgW-12} height={svgH-12} rx="1" fill="none" stroke="rgba(100,65,20,0.25)" strokeWidth="1" style={{pointerEvents:"none"}}/>
+          <circle cx="10" cy="10" r="4" fill="none" stroke="rgba(100,65,20,0.45)" strokeWidth="1" style={{pointerEvents:"none"}}/>
+          <circle cx={svgW-10} cy="10" r="4" fill="none" stroke="rgba(100,65,20,0.45)" strokeWidth="1" style={{pointerEvents:"none"}}/>
+          <circle cx="10" cy={svgH-10} r="4" fill="none" stroke="rgba(100,65,20,0.45)" strokeWidth="1" style={{pointerEvents:"none"}}/>
+          <circle cx={svgW-10} cy={svgH-10} r="4" fill="none" stroke="rgba(100,65,20,0.45)" strokeWidth="1" style={{pointerEvents:"none"}}/>
 
-          {/* Décors cartographiques — forêts schématiques bords */}
-          <g opacity="0.13" style={{pointerEvents:"none"}}>
-            <circle cx={14} cy={Math.round(svgH / 2 - 10)} r="7" fill="#3a5a20"/>
-            <circle cx={26} cy={Math.round(svgH / 2 - 16)} r="9" fill="#3a5a20"/>
-            <circle cx={38} cy={Math.round(svgH / 2 - 10)} r="7" fill="#3a5a20"/>
-            <circle cx={svgW - 14} cy={Math.round(svgH / 3)} r="7" fill="#3a5a20"/>
-            <circle cx={svgW - 26} cy={Math.round(svgH / 3 - 6)} r="9" fill="#3a5a20"/>
-            <circle cx={svgW - 38} cy={Math.round(svgH / 3)} r="6" fill="#3a5a20"/>
-          </g>
+          {/* Décors auto — montagnes (coins, évitent les cases) */}
+          {(() => {
+            const mountains: React.ReactNode[] = [];
+            const zones = [
+              { x: svgW * 0.75, y: 10 },
+              { x: 10, y: svgH * 0.72 },
+              { x: svgW * 0.05, y: 10 },
+            ];
+            zones.forEach((z, zi) => {
+              const ox = z.x + seededRand(sessionId, zi * 10) * 30;
+              const oy = z.y + seededRand(sessionId, zi * 10 + 1) * 20;
+              const occupied = nodes.some(n => {
+                const c = cellOrigin(n.col, n.row);
+                return Math.abs(c.x - ox) < step * 1.5 && Math.abs(c.y - oy) < step * 1.5;
+              });
+              if (occupied) return;
+              [0, 1, 2].forEach(mi => {
+                const mx2 = ox + mi * 16;
+                const mh = 18 + seededRand(sessionId, zi * 10 + mi + 2) * 10;
+                mountains.push(
+                  <g key={`mt-${zi}-${mi}`} opacity="0.45" style={{pointerEvents:"none"}}>
+                    <polygon points={`${mx2},${oy+mh} ${mx2+10},${oy} ${mx2+20},${oy+mh}`} fill="#7a6040" stroke="#5a4020" strokeWidth="0.5"/>
+                    <polygon points={`${mx2+7},${oy} ${mx2+10},${oy+6} ${mx2+13},${oy}`} fill="#e8e0d0"/>
+                  </g>
+                );
+              });
+            });
+            return mountains;
+          })()}
 
-          {/* Boussole en coin bas-droit */}
-          <g transform={`translate(${svgW - 42}, ${svgH - 42})`} opacity="0.62" style={{pointerEvents:"none"}}>
-            <circle cx="18" cy="18" r="17" fill="rgba(240,220,160,0.7)" stroke="rgba(100,65,20,0.5)" strokeWidth="1.5"/>
-            <polygon points="18,4 14,18 18,15 22,18" fill="#8b2020"/>
-            <polygon points="18,32 14,18 18,21 22,18" fill="#4a3010"/>
-            <polygon points="32,18 18,14 21,18 18,22" fill="#4a3010"/>
-            <polygon points="4,18 18,14 15,18 18,22" fill="#4a3010"/>
-            <circle cx="18" cy="18" r="3" fill="rgba(100,65,20,0.6)"/>
-            <text x="18" y="1.5" textAnchor="middle" fontSize="6" fill="#8b2020" fontFamily="'Cinzel',serif" fontWeight="bold">N</text>
+          {/* Décors auto — forêts (bords libres) */}
+          {(() => {
+            const trees: React.ReactNode[] = [];
+            const zones = [
+              { x: 12, y: svgH * 0.35 },
+              { x: svgW - 50, y: svgH * 0.55 },
+              { x: svgW * 0.45, y: svgH - 45 },
+            ];
+            zones.forEach((z, zi) => {
+              const occupied = nodes.some(n => {
+                const c = cellOrigin(n.col, n.row);
+                return Math.abs(c.x - z.x) < step * 1.5 && Math.abs(c.y - z.y) < step * 1.5;
+              });
+              if (occupied) return;
+              [0,1,2,3].forEach(ti => {
+                const tx = z.x + seededRand(sessionId, zi*20+ti) * 30;
+                const ty = z.y + seededRand(sessionId, zi*20+ti+1) * 20;
+                const tr = 6 + seededRand(sessionId, zi*20+ti+2) * 5;
+                trees.push(
+                  <g key={`tr-${zi}-${ti}`} opacity="0.42" style={{pointerEvents:"none"}}>
+                    <circle cx={tx} cy={ty} r={tr} fill="#4a7028" stroke="#2a4810" strokeWidth="0.6"/>
+                    <line x1={tx-tr*0.3} y1={ty-tr*0.2} x2={tx-tr*0.5} y2={ty+tr*0.3} stroke="#2a4010" strokeWidth="0.7"/>
+                    <line x1={tx+tr*0.1} y1={ty-tr*0.4} x2={tx+tr*0.1} y2={ty+tr*0.2} stroke="#2a4010" strokeWidth="0.7"/>
+                  </g>
+                );
+              });
+            });
+            return trees;
+          })()}
+
+          {/* Décors auto — rivière sinueuse */}
+          {(() => {
+            const r1 = seededRand(sessionId, 77);
+            const r2 = seededRand(sessionId, 78);
+            const r3 = seededRand(sessionId, 79);
+            const startX = svgW * 0.05;
+            const startY = svgH * (0.4 + r1 * 0.2);
+            const cp1x = svgW * 0.25 + r2 * 20;
+            const cp1y = startY - 15 + r3 * 30;
+            const cp2x = svgW * 0.45;
+            const cp2y = startY + 10;
+            const endX = svgW * 0.6;
+            const endY = startY - 5 + r2 * 15;
+            const anyNode = nodes.some(n => {
+              const c = cellCenter(n.col, n.row);
+              return c.x > startX && c.x < endX && Math.abs(c.y - startY) < step;
+            });
+            if (anyNode) return null;
+            return (
+              <g style={{pointerEvents:"none"}}>
+                <path d={`M${startX},${startY} C${cp1x},${cp1y} ${cp2x},${cp2y} ${endX},${endY}`}
+                  fill="none" stroke="rgba(60,110,180,0.3)" strokeWidth="5" strokeLinecap="round"/>
+                <path d={`M${startX},${startY} C${cp1x},${cp1y} ${cp2x},${cp2y} ${endX},${endY}`}
+                  fill="none" stroke="rgba(90,150,210,0.55)" strokeWidth="2.5" strokeLinecap="round"/>
+                <path d={`M${startX},${startY} C${cp1x},${cp1y} ${cp2x},${cp2y} ${endX},${endY}`}
+                  fill="none" stroke="rgba(160,200,240,0.4)" strokeWidth="1" strokeLinecap="round" strokeDasharray="6 5"/>
+                <ellipse cx={startX} cy={startY} rx="10" ry="6" fill="rgba(90,150,210,0.3)"/>
+              </g>
+            );
+          })()}
+
+          {/* Boussole ornementale */}
+          <g transform={`translate(${svgW - 46}, ${svgH - 46})`} opacity="0.72" style={{pointerEvents:"none"}}>
+            <circle cx="20" cy="20" r="19" fill="rgba(240,220,160,0.75)" stroke="rgba(100,65,20,0.6)" strokeWidth="1.5"/>
+            <circle cx="20" cy="20" r="12" fill="none" stroke="rgba(100,65,20,0.3)" strokeWidth="0.8"/>
+            <polygon points="20,3 16,20 20,17 24,20" fill="#8b2020"/>
+            <polygon points="20,37 16,20 20,23 24,20" fill="#4a3010"/>
+            <polygon points="37,20 20,16 23,20 20,24" fill="#4a3010"/>
+            <polygon points="3,20 20,16 17,20 20,24" fill="#4a3010"/>
+            <polygon points="6,6 14,16 16,14" fill="#6a4820" opacity="0.7"/>
+            <polygon points="34,6 26,16 24,14" fill="#6a4820" opacity="0.7"/>
+            <polygon points="6,34 14,24 16,26" fill="#6a4820" opacity="0.7"/>
+            <polygon points="34,34 26,24 24,26" fill="#6a4820" opacity="0.7"/>
+            <circle cx="20" cy="20" r="4" fill="rgba(100,65,20,0.7)"/>
+            <text x="20" y="0.5" textAnchor="middle" fontSize="7" fill="#8b2020" fontFamily="'Cinzel',serif" fontWeight="bold">N</text>
+            <text x="20" y="43" textAnchor="middle" fontSize="5.5" fill="#4a3010" fontFamily="'Cinzel',serif">S</text>
+            <text x="43" y="23" textAnchor="middle" fontSize="5.5" fill="#4a3010" fontFamily="'Cinzel',serif">E</text>
+            <text x="-3" y="23" textAnchor="middle" fontSize="5.5" fill="#4a3010" fontFamily="'Cinzel',serif">O</text>
           </g>
 
           {/* Routes style carte ancienne */}
@@ -397,58 +574,44 @@ export function SceneMap({ scenes, selectedSceneId, sessionId, onSelectScene, on
     />
   </g>
 )}
-                {/* Case */}
+                {/* Case fond + bordure */}
                 <rect x={px} y={py} width={CELL_SIZE} height={CELL_SIZE} rx="4"
                   fill={colors.bg} stroke={borderColor} strokeWidth={borderWidth} />
-
                 {/* Reflet haut */}
-                <rect x={px + 2} y={py + 2} width={CELL_SIZE - 4} height={12} rx="3" fill="rgba(255,255,255,0.15)" />
+                <rect x={px + 2} y={py + 2} width={CELL_SIZE - 4} height={8} rx="3" fill="rgba(255,255,255,0.15)" />
 
-                {/* Pictogramme — FIX : onMouseUp au lieu de onClick pour éviter le conflit */}
-                <text
-                  x={center.x}
-                   y={py + CELL_SIZE / 2 + 2}
-                    textAnchor="middle"
-                    fontSize="20"
-                 style={{
-                  pointerEvents: "all",
-                  cursor: "pointer",
-                  userSelect: "none"
-                  }}
+                {/* Icône dessinée — zone cliquable pour changer le picto */}
+                <g
+                  style={{ pointerEvents: "all", cursor: "pointer" }}
                   onClick={(e) => {
                     e.stopPropagation();
                     pictoTapRef.current = true;
-                    const rect = (e.target as Element).getBoundingClientRect();
+                    const svgEl = (e.target as Element).closest("svg");
+                    const rect2 = svgEl?.getBoundingClientRect() ?? { left: 0, top: 0, bottom: 0 };
+                    const approxY = rect2.top + py + CELL_SIZE;
                     const menuH = 260;
-                    const spaceBelow = window.innerHeight - rect.bottom;
-                    const yPos = spaceBelow >= menuH
-                      ? rect.bottom + 6
-                      : Math.max(10, rect.top - menuH - 6);
+                    const spaceBelow = window.innerHeight - approxY;
+                    const yPos = spaceBelow >= menuH ? approxY + 6 : Math.max(10, approxY - menuH - 6);
                     setPictoMenuPos({
-                      x: Math.max(10, Math.min(rect.left + rect.width / 2 - 115, window.innerWidth - 240)),
+                      x: Math.max(10, Math.min(rect2.left + px + CELL_SIZE / 2 - 115, window.innerWidth - 240)),
                       y: yPos,
                     });
                     setPictoMenuSceneId((prev) => prev === node.id ? null : node.id);
                   }}
->
-  {picto}
-</text>
+                >
+                  {renderPictoIcon(picto, center.x, center.y - 4, CELL_SIZE)}
+                </g>
 
-                {/* Titre */}
-                <foreignObject x={px + 2} y={py + CELL_SIZE / 2 + 8} width={CELL_SIZE - 4} height={CELL_SIZE / 2 - 10}>
-                  <div style={{
-                    fontSize: "7px", fontFamily: "'Cinzel', serif",
-                    fontWeight: node.isActive ? "700" : "600",
-                    color: "#fff",
-                    textAlign: "center", lineHeight: "1.2",
-                    overflow: "hidden", display: "-webkit-box",
-                    WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-                    wordBreak: "break-word",
-                    textShadow: "0 1px 3px rgba(0,0,0,0.9)",
-                  }}>
-                    {node.title}
-                  </div>
-                </foreignObject>
+                {/* Nom en italique sous la case (style carte ancienne) */}
+                <text
+                  x={center.x} y={py + CELL_SIZE + 9}
+                  textAnchor="middle" fontSize="6.5"
+                  fill="#2a1200" fontFamily="'Georgia', serif"
+                  fontStyle="italic"
+                  style={{ pointerEvents: "none", userSelect: "none" }}
+                >
+                  {node.title.length > 12 ? node.title.slice(0, 11) + "…" : node.title}
+                </text>
 
                 {/* Point note */}
                 {node.hasNotes && (
@@ -456,20 +619,24 @@ export function SceneMap({ scenes, selectedSceneId, sessionId, onSelectScene, on
                 )}
 
                 {/* Bandeau état bas de case */}
-                <rect
-                  x={px} y={py + CELL_SIZE - 11}
-                  width={CELL_SIZE} height={11} rx="0"
-                  fill={node.isActive ? "#c9962a" : node.isVisited ? "#7aaa50" : "rgba(80,55,25,0.55)"}
-                  opacity="0.92"
-                />
-                <text
-                  x={center.x} y={py + CELL_SIZE - 4}
-                  textAnchor="middle" fontSize="5.5"
-                  fill="#fff" fontFamily="'Cinzel', serif" fontWeight="700"
-                  style={{ pointerEvents: "none", userSelect: "none", letterSpacing: "0.04em" }}
-                >
-                  {node.isActive ? "ACTIVE" : node.isVisited ? "VISITÉE" : ""}
-                </text>
+                {(node.isActive || node.isVisited) && (
+                  <rect
+                    x={px} y={py + CELL_SIZE - 9}
+                    width={CELL_SIZE} height={9} rx="0"
+                    fill={node.isActive ? "#c9962a" : "#7aaa50"}
+                    opacity="0.92"
+                  />
+                )}
+                {(node.isActive || node.isVisited) && (
+                  <text
+                    x={center.x} y={py + CELL_SIZE - 2}
+                    textAnchor="middle" fontSize="5"
+                    fill="#fff" fontFamily="'Cinzel', serif" fontWeight="700"
+                    style={{ pointerEvents: "none", userSelect: "none", letterSpacing: "0.04em" }}
+                  >
+                    {node.isActive ? "ACTIVE" : "VISITÉE"}
+                  </text>
+                )}
 
                 {/* Pulse actif */}
                 {node.isActive && (

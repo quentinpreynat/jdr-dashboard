@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
+import { Map } from "lucide-react";
 import type {
   ChoiceIntent,
   Npc,
@@ -12,7 +13,7 @@ interface SceneEditorProps {
   scene: Scene;
   places: Place[];
   npcs: Npc[];
-  allScenes: Scene[]; // toutes les scènes de la session pour les liaisons
+  allScenes: Scene[]; // toutes les scÃ¨nes de la session pour les liaisons
   highlight?: boolean;
   onDelete(): void;
   onUpdate(fields: Partial<Omit<Scene, "id">>): void;
@@ -45,7 +46,7 @@ export function SceneEditor({
 }: SceneEditorProps) {
   const [openChoiceId, setOpenChoiceId] = useState<string | null>(null);
 
-  // Scènes disponibles = toutes sauf la scène courante
+  // ScÃ¨nes disponibles = toutes sauf la scÃ¨ne courante
   const otherScenes = allScenes.filter((s) => s.id !== scene.id);
 
   const defaultDraftType: SceneChoiceTargetType = "scene";
@@ -61,14 +62,14 @@ export function SceneEditor({
   const placeName = scene.placeId
     ? (places.find((place) => place.id === scene.placeId)?.name ?? "Lieu inconnu")
     : "Aucun lieu";
-  const metaSummary = `${placeName} • ${scene.linkedNpcIds.length} PNJ • ${choices.length} Choix`;
+  const metaSummary = `${placeName} â€¢ ${scene.linkedNpcIds.length} PNJ â€¢ ${choices.length} Choix`;
   const textPreview = scene.text.trim()
     ? scene.text.trim()
     : "Aucun texte de narration pour le moment.";
 
   // Retourne les cibles selon le type
   function getTargets(type: SceneChoiceTargetType) {
-    if (type === "scene") return otherScenes.map((s) => ({ id: s.id, name: s.title || "Scène sans titre" }));
+    if (type === "scene") return otherScenes.map((s) => ({ id: s.id, name: s.title || "ScÃ¨ne sans titre" }));
     if (type === "place") return places.map((p) => ({ id: p.id, name: p.name || "Lieu sans nom" }));
     return npcs.map((n) => ({ id: n.id, name: n.name || "PNJ sans nom" }));
   }
@@ -227,7 +228,16 @@ export function SceneEditor({
                           ? "bg-blue-100 text-blue-800"
                           : "bg-green-100 text-green-800"
                     }`}>
-                      {choice.targetType === "scene" ? "🗺️ Scène" : choice.targetType === "place" ? "📍 Lieu" : "🎭 PNJ"}
+                      {choice.targetType === "scene" ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Map size={14} />
+                          Scène
+                        </span>
+                      ) : choice.targetType === "place" ? (
+                        "Lieu"
+                      ) : (
+                        "PNJ"
+                      )}
                     </span>
                   </button>
                   <div className={`grid transition-all duration-200 ${isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-70"}`}>
@@ -247,7 +257,7 @@ export function SceneEditor({
                           className="min-h-11 w-full rounded-md border border-stone-300 bg-stone-100 px-2 py-1 text-stone-800"
                         />
                         <div className="grid gap-2 lg:grid-cols-[160px_1fr_auto]">
-                          {/* Sélecteur type */}
+                          {/* SÃ©lecteur type */}
                           <select
                             value={choice.targetType}
                             onChange={(event) => {
@@ -264,11 +274,11 @@ export function SceneEditor({
                             }}
                             className="min-h-11 rounded-md border border-stone-300 bg-stone-100 px-2 py-1 text-stone-800"
                           >
-                            <option value="scene">🗺️ Scène</option>
-                            <option value="place">📍 Lieu</option>
-                            <option value="npc">🎭 PNJ</option>
+                            <option value="scene">Scène</option>
+                            <option value="place">Lieu</option>
+                            <option value="npc">PNJ</option>
                           </select>
-                          {/* Sélecteur cible */}
+                          {/* SÃ©lecteur cible */}
                           <select
                             value={choice.targetId}
                             onChange={(event) =>
@@ -334,7 +344,7 @@ export function SceneEditor({
                         </div>
                         <label className="flex flex-col gap-1">
                           <span className="text-xs font-semibold uppercase tracking-wide text-stone-600">
-                            Intention (icône Live)
+                            Intention (icÃ´ne Live)
                           </span>
                           <select
                             value={choice.intent ?? ""}
@@ -352,7 +362,7 @@ export function SceneEditor({
                             <option value="">Auto (neutre)</option>
                             <option value="explore">Explorer</option>
                             <option value="search">Fouiller</option>
-                            <option value="move">Se déplacer</option>
+                            <option value="move">Se dÃ©placer</option>
                             <option value="talk">Parler</option>
                             <option value="attack">Attaquer</option>
                             <option value="other">Autre</option>
@@ -390,9 +400,9 @@ export function SceneEditor({
                 }}
                 className="parchment-text min-h-11 rounded-md border border-stone-300 bg-stone-100 px-3 py-2 text-sm text-stone-800"
               >
-                <option value="scene">🗺️ Scène</option>
-                <option value="place">📍 Lieu</option>
-                <option value="npc">🎭 PNJ</option>
+                <option value="scene">Scène</option>
+                <option value="place">Lieu</option>
+                <option value="npc">PNJ</option>
               </select>
               <select
                 value={choiceDraft.targetId}
@@ -433,3 +443,6 @@ export function SceneEditor({
     </li>
   );
 }
+
+
+

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { CampaignSelector } from "./components/CampaignSelector";
+import { HelpMenu } from "./components/HelpMenu";
 import { WelcomeScreen } from "./components/WelcomeScreen";
 import { CampaignDashboardPage } from "./pages/CampaignDashboardPage";
 import { NpcDetailPage } from "./pages/NpcDetailPage";
@@ -59,6 +60,7 @@ export default function App() {
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          <HelpMenu />
         </div>
       )}
     </div>

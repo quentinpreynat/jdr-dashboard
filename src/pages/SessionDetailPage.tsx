@@ -1,7 +1,11 @@
 import { Link, useLocation, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { SceneEditor } from "../components/SceneEditor";
+import { TutorialOverlay } from "../components/TutorialOverlay";
 import { useAppData } from "../state/AppDataContext";
+import { useSettings } from "../state/SettingsContext";
+
+const DETAIL_TUTORIAL_SEEN_KEY = "mj-detail-tutorial-seen";
 
 export function SessionDetailPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -16,9 +20,34 @@ export function SessionDetailPage() {
     addSceneChoice,
     removeSceneChoice,
   } = useAppData();
+  const { settings, tutorialResetSignal } = useSettings();
   const session = data.sessions.find((entry) => entry.id === sessionId);
   const [highlightSceneId, setHighlightSceneId] = useState<string | null>(null);
+  const [showTutorial, setShowTutorial] = useState(false);
   const places = data.campaign.places ?? [];
+
+  // Auto-open tutorial on first visit (beginner mode only)
+  useEffect(() => {
+    if (settings.expertMode) {
+      setShowTutorial(false);
+      return;
+    }
+    try {
+      const seen = localStorage.getItem(DETAIL_TUTORIAL_SEEN_KEY) === "true";
+      if (!seen) setShowTutorial(true);
+    } catch {
+      // ignore
+    }
+  }, [settings.expertMode, tutorialResetSignal]);
+
+  const handleTutorialClose = () => {
+    setShowTutorial(false);
+    try {
+      localStorage.setItem(DETAIL_TUTORIAL_SEEN_KEY, "true");
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     if (!session || !sessionId) {
@@ -37,6 +66,13 @@ export function SessionDetailPage() {
     }
   }, [location.search, session, sessionId]);
 
+  // Listen for help menu "replay tutorial" event
+  useEffect(() => {
+    const onReplay = () => setShowTutorial(true);
+    window.addEventListener("mj-open-detail-tutorial", onReplay);
+    return () => window.removeEventListener("mj-open-detail-tutorial", onReplay);
+  }, []);
+
   if (!session || !sessionId) {
     return (
       <section className="space-y-3">
@@ -49,120 +85,156 @@ export function SessionDetailPage() {
   }
 
   return (
-    <section
-      className="space-y-6 p-6"
-      style={{
-        background: "linear-gradient(160deg, #fdf6e3, #f5e6c0)",
-        border: "2px solid #8b5e2a",
-        borderRadius: "2px 12px 2px 12px",
-        boxShadow: "4px 4px 20px rgba(0,0,0,0.25)",
-      }}
-    >
-      <div className="flex items-center justify-between gap-4">
-        <h2
-          className="text-2xl font-semibold"
-          style={{ fontFamily: "'Uncial Antiqua', serif", color: "#1e1005" }}
-        >
-          Détails de la session
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            to={`/session/${sessionId}/live`}
-            className="btn-open-session-live"
+    <>
+      <TutorialOverlay
+        isOpen={showTutorial}
+        onClose={handleTutorialClose}
+        variant="detail"
+      />
+
+      <section
+        className="space-y-6 p-6"
+        style={{
+          background: "linear-gradient(160deg, #fdf6e3, #f5e6c0)",
+          border: "2px solid #8b5e2a",
+          borderRadius: "2px 12px 2px 12px",
+          boxShadow: "4px 4px 20px rgba(0,0,0,0.25)",
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between gap-4">
+          <h2
+            className="text-2xl font-semibold"
+            style={{ fontFamily: "'Uncial Antiqua', serif", color: "#1e1005" }}
           >
-            Open Session Live
-          </Link>
-          <button
-            type="button"
-            onClick={() => addScene(sessionId)}
-            className="btn-add-scene"
-          >
-            Ajouter une scène
-          </button>
+            Détails de la session
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {/* Tutorial button (beginner mode only) */}
+            {!settings.expertMode && (
+              <button
+                type="button"
+                onClick={() => setShowTutorial(true)}
+                className="rounded-md border border-[#c9962a] px-3 py-1.5 text-xs font-medium text-[#5a3010] hover:bg-[#ead59a] transition-colors"
+                style={{ fontFamily: "'Cinzel', serif" }}
+              >
+                🎓 Tutoriel
+              </button>
+            )}
+            <Link
+              data-tutorial="detail-open-live"
+              to={`/session/${sessionId}/live`}
+              className="btn-open-session-live"
+            >
+              Open Session Live
+            </Link>
+            <button
+              data-tutorial="detail-add-scene"
+              type="button"
+              onClick={() => addScene(sessionId)}
+              className="btn-add-scene"
+            >
+              Ajouter une scène
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <label className="flex flex-col gap-1">
-          <span
-            className="text-xs font-medium uppercase tracking-wider"
-            style={{ fontFamily: "'Cinzel', serif", color: "#7a5c2a" }}
-          >
-            Titre
-          </span>
-          <input
-            value={session.title}
-            onChange={(event) =>
-              updateSession(sessionId, { title: event.target.value })
-            }
-            className="parchment-text rounded-md border border-stone-300 bg-stone-100 px-3 py-2 text-stone-800"
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span
-            className="text-xs font-medium uppercase tracking-wider"
-            style={{ fontFamily: "'Cinzel', serif", color: "#7a5c2a" }}
-          >
-            Objectif
-          </span>
-          <input
-            value={session.objective}
-            onChange={(event) =>
-              updateSession(sessionId, { objective: event.target.value })
-            }
-            className="parchment-text rounded-md border border-stone-300 bg-stone-100 px-3 py-2 text-stone-800"
-          />
-        </label>
-      </div>
-
-      <label className="flex flex-col gap-1">
-        <span
-          className="text-xs font-medium uppercase tracking-wider"
-          style={{ fontFamily: "'Cinzel', serif", color: "#7a5c2a" }}
+        {/* Session info fields */}
+        <div
+          data-tutorial="detail-session-info"
+          className="grid gap-4 lg:grid-cols-2"
         >
-          Notes du MJ
-        </span>
-        <textarea
-          rows={5}
-          value={session.notes}
-          onChange={(event) =>
-            updateSession(sessionId, { notes: event.target.value })
-          }
-          className="parchment-text rounded-md border border-stone-300 bg-stone-100 px-3 py-2 text-stone-800"
-        />
-      </label>
-
-      <div className="space-y-3 rounded-[8px] border-2 border-[#8b5e2a] bg-[#f0d9a0] p-6 shadow-[4px_4px_16px_rgba(0,0,0,0.4)]">
-        <h3 className="mb-4 border-b-2 border-[#8b5e2a] pb-2 font-cinzel text-[1.1rem] font-semibold tracking-[0.15em] text-[#2c1a08] uppercase">
-          Scènes
-        </h3>
-        <ul className="space-y-3">
-          {session.scenes.map((scene) => (
-            <SceneEditor
-              key={scene.id}
-              scene={scene}
-              places={places}
-              npcs={data.npcs}
-              allScenes={session.scenes}
-              highlight={highlightSceneId === scene.id}
-              onDelete={() => deleteScene(sessionId, scene.id)}
-              onUpdate={(fields) => updateScene(sessionId, scene.id, fields)}
-              onSetNpcLink={(npcId, linked) =>
-                setSceneNpcLink(session.id, scene.id, npcId, linked)
+          <label className="flex flex-col gap-1">
+            <span
+              className="text-xs font-medium uppercase tracking-wider"
+              style={{ fontFamily: "'Cinzel', serif", color: "#7a5c2a" }}
+            >
+              Titre
+            </span>
+            <input
+              value={session.title}
+              onChange={(event) =>
+                updateSession(sessionId, { title: event.target.value })
               }
-              onAddChoice={(choice) => addSceneChoice(sessionId, scene.id, choice)}
-              onRemoveChoice={(choiceId) =>
-                removeSceneChoice(sessionId, scene.id, choiceId)
-              }
+              className="parchment-text rounded-md border border-stone-300 bg-stone-100 px-3 py-2 text-stone-800"
             />
-          ))}
-          {session.scenes.length === 0 && (
-            <li className="card card-dashed card-compact text-sm text-stone-600">
-              Aucune scène pour le moment.
-            </li>
-          )}
-        </ul>
-      </div>
-    </section>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span
+              className="text-xs font-medium uppercase tracking-wider"
+              style={{ fontFamily: "'Cinzel', serif", color: "#7a5c2a" }}
+            >
+              Objectif
+            </span>
+            <input
+              value={session.objective}
+              onChange={(event) =>
+                updateSession(sessionId, { objective: event.target.value })
+              }
+              className="parchment-text rounded-md border border-stone-300 bg-stone-100 px-3 py-2 text-stone-800"
+            />
+          </label>
+        </div>
+
+        {/* MJ notes */}
+        <label
+          data-tutorial="detail-notes"
+          className="flex flex-col gap-1"
+        >
+          <span
+            className="text-xs font-medium uppercase tracking-wider"
+            style={{ fontFamily: "'Cinzel', serif", color: "#7a5c2a" }}
+          >
+            Notes du MJ
+          </span>
+          <textarea
+            rows={5}
+            value={session.notes}
+            onChange={(event) =>
+              updateSession(sessionId, { notes: event.target.value })
+            }
+            className="parchment-text rounded-md border border-stone-300 bg-stone-100 px-3 py-2 text-stone-800"
+          />
+        </label>
+
+        {/* Scenes list */}
+        <div
+          data-tutorial="detail-scenes-list"
+          className="space-y-3 rounded-[8px] border-2 border-[#8b5e2a] bg-[#f0d9a0] p-6 shadow-[4px_4px_16px_rgba(0,0,0,0.4)]"
+        >
+          <h3 className="mb-4 border-b-2 border-[#8b5e2a] pb-2 font-cinzel text-[1.1rem] font-semibold tracking-[0.15em] text-[#2c1a08] uppercase">
+            Scènes
+          </h3>
+          <ul className="space-y-3">
+            {session.scenes.map((scene) => (
+              <SceneEditor
+                key={scene.id}
+                scene={scene}
+                places={places}
+                npcs={data.npcs}
+                allScenes={session.scenes}
+                highlight={highlightSceneId === scene.id}
+                onDelete={() => deleteScene(sessionId, scene.id)}
+                onUpdate={(fields) => updateScene(sessionId, scene.id, fields)}
+                onSetNpcLink={(npcId, linked) =>
+                  setSceneNpcLink(session.id, scene.id, npcId, linked)
+                }
+                onAddChoice={(choice) =>
+                  addSceneChoice(sessionId, scene.id, choice)
+                }
+                onRemoveChoice={(choiceId) =>
+                  removeSceneChoice(sessionId, scene.id, choiceId)
+                }
+              />
+            ))}
+            {session.scenes.length === 0 && (
+              <li className="card card-dashed card-compact text-sm text-stone-600">
+                Aucune scène pour le moment.
+              </li>
+            )}
+          </ul>
+        </div>
+      </section>
+    </>
   );
 }
