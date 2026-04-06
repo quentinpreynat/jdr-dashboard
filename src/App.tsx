@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
-import { CampaignSelector } from "./components/CampaignSelector";
+import { HomePage } from "./pages/HomePage";
 import { HelpMenu } from "./components/HelpMenu";
 import { WelcomeScreen } from "./components/WelcomeScreen";
 import { CampaignDashboardPage } from "./pages/CampaignDashboardPage";
@@ -13,6 +13,7 @@ import { SessionDetailPage } from "./pages/SessionDetailPage";
 import { SessionLivePage } from "./pages/SessionLivePage";
 import { SessionsListPage } from "./pages/SessionsListPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { PlayerCharactersPage } from "./pages/PlayerCharactersPage";
 import woodTexture from "./assets/wood-texture.png";
 
 export default function App() {
@@ -39,7 +40,7 @@ export default function App() {
           <Routes>
             <Route element={<AppShell />}>
               <Route path="/" element={<CampaignDashboardPage />} />
-              <Route path="/campaigns" element={<CampaignSelector />} />
+              <Route path="/campaigns" element={<HomePage />} />
               <Route path="/sessions" element={<SessionsListPage />} />
               <Route
                 path="/sessions/:sessionId"
@@ -55,6 +56,7 @@ export default function App() {
               />
               <Route path="/npcs" element={<NpcListPage />} />
               <Route path="/npcs/:npcId" element={<NpcDetailPage />} />
+              <Route path="/characters" element={<PlayerCharactersPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>

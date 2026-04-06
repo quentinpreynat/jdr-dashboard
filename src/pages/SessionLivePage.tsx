@@ -1,4 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { CharacterCard } from "../components/characters/CharacterCard";
+import { createDefaultHeroQuestData } from "../components/characters/sheets/HeroQuestSheet";
 import { Link, useParams } from "react-router-dom";
 import { ChoiceIcon } from "../components/ChoiceIcon";
 import { ImprovisationModal } from "../components/ImprovisationModal";
@@ -1524,6 +1526,7 @@ export function SessionLivePage() {
           className="panel-wood fixed right-0 top-0 z-40 h-screen flex flex-col p-2 gap-1"
           style={{
             width: rightPanelWidth,
+            minWidth: rightPanelTab === "pcs" ? `${RIGHT_PANEL_PCS_PX}px` : undefined,
             transition: "width 240ms ease",
           }}
         >
@@ -1680,7 +1683,7 @@ export function SessionLivePage() {
                 }}
               >
                 <span className="pointer-events-none absolute left-0 top-0 h-full w-2 bg-stone-500/10" />
-                <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden py-2">
+                <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto py-2 pr-1">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/70 font-cinzel">
                       Registre des PJ
@@ -1690,11 +1693,17 @@ export function SessionLivePage() {
                         type="button"
                         onClick={() => {
                           const newId = createPlayerCharacter();
+                          // Initialiser avec les données HeroQuest par défaut
+                          updatePlayerCharacter(newId, {
+                            system: "heroquest",
+                            heroQuestData: createDefaultHeroQuestData("custom"),
+                          });
                           setSelectedPcId(newId);
                         }}
-                        className="btn btn-subtle px-2 text-xs"
+                        className="rounded-md border-2 border-[#c9962a] bg-[#f5e6c0] px-3 py-1 text-xs font-bold text-[#5a3010] hover:bg-[#ead59a] transition-colors"
+                        style={{ fontFamily: "'Cinzel', serif" }}
                       >
-                        + PJ
+                        + Nouveau PJ
                       </button>
                       <button
                         type="button"
@@ -1824,173 +1833,81 @@ export function SessionLivePage() {
                     </div>
                   </div>
                   {selectedPc && (
-                    <div className="rounded-xl border border-stone-300 bg-stone-200 p-3 shadow-[0_6px_14px_rgba(62,38,19,0.14)] transition-all duration-200">
-                      <div className="flex items-center justify-between gap-2">
+                    <div className="rounded-xl border border-[#c9962a]/40 shadow-[0_6px_14px_rgba(62,38,19,0.14)] overflow-hidden transition-all duration-200"
+                      style={{ background: "linear-gradient(160deg, #fdf6e3, #f5e6c0)" }}
+                    >
+                      {/* En-tête de la fiche */}
+                      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-[#c9962a]/30">
                         <div>
-                          <p className="text-xs uppercase tracking-wide text-stone-600">
+                          <p className="text-[10px] uppercase tracking-wide text-stone-500" style={{ fontFamily: "'Cinzel', serif" }}>
                             Fiche PJ
                           </p>
-                          <p className="text-sm font-semibold text-stone-900">
+                          <p className="text-sm font-semibold text-[#2c1a06]" style={{ fontFamily: "'Cinzel', serif" }}>
                             {selectedPc.name}
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedPcId(null)}
-                          className="btn btn-subtle px-2 text-xs"
-                        >
-                          Fermer
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {/* Sélecteur de système */}
+                          <select
+                            value={selectedPc.system ?? "heroquest"}
+                            onChange={(e) =>
+                              updatePlayerCharacter(selectedPc.id, {
+                                system: e.target.value as "heroquest" | "oneRing" | "dnd",
+                                heroQuestData: e.target.value === "heroquest"
+                                  ? (selectedPc.heroQuestData ?? createDefaultHeroQuestData())
+                                  : selectedPc.heroQuestData,
+                              })
+                            }
+                            className="rounded-md border border-[#c9962a]/50 bg-white/70 px-2 py-1 text-xs text-stone-700 focus:outline-none"
+                            style={{ fontFamily: "'Cinzel', serif" }}
+                          >
+                            <option value="heroquest">⚔️ HeroQuest</option>
+                            <option value="oneRing" disabled>💍 Anneau Unique</option>
+                            <option value="dnd" disabled>🐉 D&D 5e</option>
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPcId(null)}
+                            className="rounded-md border border-stone-300 bg-white/70 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100 transition-colors"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       </div>
-                      <div className="mt-3 space-y-2">
+
+                      {/* Nom + rôle éditables */}
+                      <div className="flex gap-2 px-3 pt-2">
                         <input
                           value={selectedPc.name}
-                          onChange={(event) =>
-                            updatePlayerCharacter(selectedPc.id, {
-                              name: event.target.value,
-                            })
-                          }
-                          className="w-full rounded-md border border-stone-300 bg-white/70 px-3 py-2 text-sm"
+                          onChange={(e) => updatePlayerCharacter(selectedPc.id, { name: e.target.value })}
+                          className="flex-1 rounded-md border border-[#c9962a]/40 bg-white/70 px-2 py-1 text-xs text-stone-800 focus:outline-none focus:border-[#c9962a]"
                           placeholder="Nom du PJ"
                         />
                         <input
                           value={selectedPc.role}
-                          onChange={(event) =>
-                            updatePlayerCharacter(selectedPc.id, {
-                              role: event.target.value,
-                            })
-                          }
-                          className="w-full rounded-md border border-stone-300 bg-white/70 px-3 py-2 text-sm"
+                          onChange={(e) => updatePlayerCharacter(selectedPc.id, { role: e.target.value })}
+                          className="flex-1 rounded-md border border-[#c9962a]/40 bg-white/70 px-2 py-1 text-xs text-stone-800 focus:outline-none focus:border-[#c9962a]"
                           placeholder="Classe / rôle"
                         />
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updatePlayerCharacter(selectedPc.id, {
-                                hpCurrent: Math.max(0, selectedPc.hpCurrent - 1),
-                              })
-                            }
-                            className="btn btn-subtle px-2 text-xs"
-                          >
-                            -
-                          </button>
-                          <input
-                            type="number"
-                            value={selectedPc.hpCurrent}
-                            onChange={(event) =>
-                              updatePlayerCharacter(selectedPc.id, {
-                                hpCurrent: Number(event.target.value),
-                              })
-                            }
-                            className="w-20 rounded-md border border-stone-300 bg-white/70 px-2 py-1 text-sm"
-                          />
-                          <span className="text-xs text-stone-600">/</span>
-                          <input
-                            type="number"
-                            value={selectedPc.hpMax}
-                            onChange={(event) =>
-                              updatePlayerCharacter(selectedPc.id, {
-                                hpMax: Number(event.target.value),
-                              })
-                            }
-                            className="w-20 rounded-md border border-stone-300 bg-white/70 px-2 py-1 text-sm"
-                          />
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updatePlayerCharacter(selectedPc.id, {
-                                hpCurrent: Math.min(
-                                  selectedPc.hpMax,
-                                  selectedPc.hpCurrent + 1,
-                                ),
-                              })
-                            }
-                            className="btn btn-subtle px-2 text-xs"
-                          >
-                            +
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          {(
-                            [
-                              { key: "for", label: "FOR" },
-                              { key: "dex", label: "DEX" },
-                              { key: "int", label: "INT" },
-                              { key: "con", label: "CON" },
-                            ] as const
-                          ).map((stat) => (
-                            <label
-                              key={stat.key}
-                              className="flex items-center justify-between gap-2"
-                            >
-                              <span className="font-semibold text-stone-600">
-                                {stat.label}
-                              </span>
-                              <input
-                                value={selectedPc.stats[stat.key]}
-                                onChange={(event) =>
-                                  updatePlayerCharacter(selectedPc.id, {
-                                    stats: {
-                                      ...selectedPc.stats,
-                                      [stat.key]: Number(event.target.value),
-                                    },
-                                  })
-                                }
-                                className="w-16 rounded-md border border-stone-300 bg-white/70 px-2 py-1 text-sm"
-                                type="number"
-                              />
-                            </label>
-                          ))}
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-amber-900/70 font-cinzel">
-                            États
-                          </p>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {[
-                              "Fatigué",
-                              "Blessé",
-                              "Stressé",
-                              "Poisonné",
-                            ].map((condition) => {
-                              const active = selectedPc.conditions.includes(condition);
-                              return (
-                                <button
-                                  key={condition}
-                                  type="button"
-                                  onClick={() =>
-                                    updatePlayerCharacter(selectedPc.id, {
-                                      conditions: active
-                                        ? selectedPc.conditions.filter(
-                                            (item) => item !== condition,
-                                          )
-                                        : [...selectedPc.conditions, condition],
-                                    })
-                                  }
-                                  className={`rounded-full border px-3 py-1 text-xs ${
-                                    active
-                                      ? "border-stone-500/70 bg-stone-200"
-                                      : "border-stone-300 bg-white/70"
-                                  }`}
-                                >
-                                  {condition}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
+                      </div>
+
+                      {/* Fiche système */}
+                      <CharacterCard
+                        pc={selectedPc}
+                        mode="live"
+                        onUpdate={(fields) => updatePlayerCharacter(selectedPc.id, fields)}
+                      />
+
+                      {/* Supprimer */}
+                      <div className="px-3 pb-3">
                         <button
                           type="button"
                           onClick={() => {
-                            const confirmed = window.confirm("Supprimer ce PJ ?");
-                            if (!confirmed) {
-                              return;
-                            }
+                            if (!window.confirm("Supprimer ce PJ ?")) return;
                             deletePlayerCharacter(selectedPc.id);
                             setSelectedPcId(null);
                           }}
-                          className="btn btn-danger text-xs"
+                          className="w-full rounded-md border border-red-300 bg-white/70 py-1.5 text-xs text-red-600 hover:bg-red-50 transition-colors"
                         >
                           Supprimer le PJ
                         </button>

@@ -1,3 +1,7 @@
+import type { HeroQuestData } from "./types/systems/heroquest";
+
+export type GameSystem = "heroquest" | "oneRing" | "dnd";
+
 export interface Campaign {
   id: string;
   title: string;
@@ -101,6 +105,9 @@ export interface PlayerCharacter {
   hpMax: number;
   stats: PlayerStats;
   conditions: string[];
+  // Système de jeu
+  system?: GameSystem;
+  heroQuestData?: HeroQuestData;
   createdAt: string;
   updatedAt: string;
 }
